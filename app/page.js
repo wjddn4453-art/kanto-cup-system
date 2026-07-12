@@ -489,7 +489,6 @@ function FullPlayerList({players,teams,setActive,setCurrentPlayerId}){
           <div className="card-topline"><span>{p.tier}</span><b>{roles}</b></div>
           <div className="card-portrait"><div className="portrait-placeholder"><span>{p.name.slice(0,2)}</span></div></div>
           <div className="card-center-name">{p.name}</div>
-          <div className="card-base-point">{Number(p.basePoint??100).toLocaleString()}P</div>
           {p.status==='sold'&&<div className="card-stamp"><strong>선택 완료</strong><span>{team?.name} · {p.soldPrice}P</span></div>}
           {p.status==='unsold'&&<div className="card-stamp unsold-stamp"><strong>유찰</strong></div>}
         </button>
