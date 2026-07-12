@@ -365,11 +365,11 @@ function Auction({
           <h2>{settings.title}</h2>
         </div>
         <div className="arena-roulette-control dual inline-control">
-          <div className="toolbar-reel">
-            <div className="toolbar-reel-track" style={{transform:`translateY(${-rouletteStep*38}px)`}}>
-              {(rouletteItems.length?rouletteItems:normalPool).concat(rouletteItems.length?rouletteItems:normalPool).map((p,i)=><div key={`${p.id}-${i}`}>{p.name}</div>)}
-            </div>
-            {!spinning&&<strong>{rouletteName}</strong>}
+          <div className={`toolbar-reel ${spinning?'is-spinning':'is-idle'}`}>
+            {spinning&&<div className="toolbar-reel-track" style={{transform:`translateY(${-rouletteStep*38}px)`}}>
+              {rouletteItems.concat(rouletteItems).map((p,i)=><div key={`${p.id}-${i}`}>{p.name}</div>)}
+            </div>}
+            {!spinning&&<strong className="toolbar-reel-result">{rouletteName}</strong>}
           </div>
           <div>
             <button onClick={()=>spinRoulette('normal')} disabled={spinning||!normalPool.length}>{spinning&&rouletteMode==='normal'?'추첨 중':'일반 룰렛'}</button>
