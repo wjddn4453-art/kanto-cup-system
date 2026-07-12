@@ -2343,3 +2343,198 @@ body::after{opacity:.38;background:repeating-linear-gradient(112deg,transparent 
 .arena-player-card{min-height:270px}.card-portrait{height:128px!important}.card-info-stack{min-height:108px;display:grid;place-items:center;align-content:center;gap:2px;padding:8px 5px 10px;background:linear-gradient(180deg,rgba(16,21,34,.58),rgba(8,11,20,.92))}.card-info-stack strong{font-size:24px;font-weight:1000}.card-info-stack span{color:#ffe48b;font-size:10px}.card-info-stack b{margin-top:4px;padding:3px 9px;border-radius:999px;color:#fff4bd;background:rgba(99,78,15,.70);border:1px solid rgba(255,222,113,.28);font-size:10px}.card-role{display:none!important}.focus-base-point{position:absolute;z-index:4;left:50%;bottom:4px;transform:translateX(-50%);color:#fff1a6;font-size:12px}
 .player-form{grid-template-columns:1.2fr 1fr 1fr 1fr .8fr auto}.table-head,.table-row{grid-template-columns:1.1fr 1fr .7fr .7fr .7fr .8fr 1fr}
 .team-list-screen{padding:16px}.team-list-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:13px;padding:12px}.team-list-card{overflow:hidden;border-radius:15px;border:1px solid rgba(255,255,255,.15);background:#07182b;box-shadow:0 14px 35px rgba(0,0,0,.28)}.team-list-card>header{min-height:82px;display:flex;align-items:center;justify-content:space-between;padding:15px 17px}.team-list-card>header h3{margin:4px 0 0;font-size:23px}.team-list-card>header>strong{color:#fff3bd}.palette-0>header{background:linear-gradient(135deg,#237cc5,#123d72)}.palette-1>header{background:linear-gradient(135deg,#d85561,#752330)}.palette-2>header{background:linear-gradient(135deg,#e89a34,#805018)}.palette-3>header{background:linear-gradient(135deg,#8058cc,#442a76)}.palette-4>header{background:linear-gradient(135deg,#38a97c,#185940)}.palette-5>header{background:linear-gradient(135deg,#3faec2,#205a68)}.palette-6>header{background:linear-gradient(135deg,#c79135,#6a4918)}.palette-7>header{background:linear-gradient(135deg,#7380a5,#39415d)}.team-list-members{display:grid;gap:7px;padding:10px}.team-list-member{min-height:60px;display:grid;grid-template-columns:48px 1fr auto;align-items:center;gap:10px;padding:7px 9px;border-radius:10px;background:rgba(5,18,32,.78)}.mini-avatar{width:48px;height:48px;display:grid;place-items:center;border-radius:8px;background:linear-gradient(145deg,#315f85,#10253a);font-weight:1000}.team-list-member b,.team-list-member small{display:block}.team-list-member small{margin-top:3px;color:#8197aa;font-size:8px}.team-list-member>strong{color:#ffe285}.team-list-empty{padding:24px;color:#7890a6;text-align:center}
+
+
+/* =========================================================
+   v2.2 POLISH FIXES
+   ========================================================= */
+
+:root{
+  --font-ui:"Pretendard","SUIT","Noto Sans KR",Arial,sans-serif;
+}
+
+body,button,input,select{font-family:var(--font-ui)!important}
+
+.single-brand h1,.arena-title h2,.panel-title h2,.team-panel-copy h3,
+.card-center-name,.focus-player-card h2,.team-list-card h3{
+  font-family:var(--font-ui)!important;
+  font-weight:900!important;
+  line-height:1.15!important;
+  letter-spacing:-.045em!important;
+}
+
+.single-brand h1,.arena-title h2{
+  display:flex;
+  align-items:center;
+  min-height:42px;
+  margin:0!important;
+  padding-top:2px;
+}
+
+.single-topbar{min-height:104px}
+.single-brand small{font-weight:900;letter-spacing:2.2px}
+.single-nav{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.single-nav button{white-space:nowrap;min-width:92px;padding:11px 14px;line-height:1.1}
+
+.arena-toolbar{
+  grid-template-columns:minmax(170px,.8fr) minmax(300px,1.1fr) minmax(320px,1fr)!important;
+  min-height:130px!important;
+  gap:18px;
+}
+.toolbar-links{display:grid;gap:4px;color:#6fc2ff!important}
+.toolbar-links span{font-size:11px;font-weight:1000;letter-spacing:1.8px}
+.toolbar-links small{color:#8198ad;font-size:9px}
+
+.arena-roulette-control.dual.inline-control{
+  width:100%;
+  display:grid!important;
+  grid-template-columns:minmax(150px,1fr) 122px!important;
+  gap:9px!important;
+  align-items:center!important;
+}
+.arena-roulette-control.dual.inline-control>div:last-child{
+  display:grid!important;
+  grid-template-columns:1fr!important;
+  gap:6px!important;
+  margin:0!important;
+}
+.arena-roulette-control.dual.inline-control button{
+  width:100%!important;
+  min-height:36px!important;
+  margin:0!important;
+  padding:7px 8px!important;
+  line-height:1.05!important;
+  border-radius:7px!important;
+}
+.toolbar-reel{min-width:0!important;width:100%!important}
+
+/* Cards: one name only. Top contains tier + main/sub. Bottom contains base point. */
+.arena-player-card{
+  min-height:254px!important;
+  display:grid!important;
+  grid-template-rows:32px minmax(128px,1fr) 54px 28px!important;
+  overflow:hidden!important;
+}
+.card-topline{
+  position:relative!important;
+  z-index:4!important;
+  height:auto!important;
+  padding:0 9px!important;
+  font-size:9px!important;
+}
+.card-topline b{font-size:8px!important;text-align:right!important}
+.card-portrait{height:auto!important;min-height:128px!important;position:relative!important}
+.card-portrait .portrait-placeholder{
+  background:radial-gradient(circle at 50% 45%,#737b91,#33394b 55%,#151a29 100%)!important;
+}
+.card-portrait .portrait-placeholder span,
+.card-portrait .portrait-placeholder i{display:none!important}
+.card-center-name{
+  display:grid;
+  place-items:center;
+  padding:7px 5px 3px;
+  color:#fff;
+  font-size:24px;
+  text-shadow:0 3px 7px #000;
+  background:linear-gradient(180deg,rgba(25,29,43,.86),rgba(8,11,19,.96));
+}
+.card-base-point{
+  display:grid;
+  place-items:center;
+  color:#ffe38a;
+  font-size:11px;
+  font-weight:1000;
+  background:#171923;
+  border-top:1px solid rgba(255,255,255,.08);
+}
+.card-info-stack,.card-name,.card-role{display:none!important}
+
+/* Team mini cards: no duplicated name. */
+.team-mini-card{height:94px!important}
+.team-mini-card .portrait-placeholder span,
+.team-mini-card .portrait-placeholder i{display:none!important}
+.mini-card-copy{
+  position:absolute;
+  inset:auto 2px 2px;
+  z-index:3;
+  display:grid;
+  place-items:center;
+  gap:0;
+  padding:3px 2px;
+  border-radius:4px;
+  background:linear-gradient(transparent,rgba(3,6,13,.94) 32%);
+  text-shadow:0 2px 4px #000;
+}
+.mini-card-copy b{position:static!important;font-size:10px!important;line-height:1.05!important}
+.mini-card-copy small{color:#d7e4ef;font-size:7px;line-height:1.05}
+.mini-card-copy span{position:static!important;color:#ffe38a!important;font-size:8px!important}
+
+/* Consistent Pokemon badge-inspired team palettes everywhere. */
+.arena-team-panel.palette-0,.team-list-card.palette-0>header{background:linear-gradient(135deg,#167ccc,#0d3f78)!important}
+.arena-team-panel.palette-1,.team-list-card.palette-1>header{background:linear-gradient(135deg,#df4654,#7b1e2c)!important}
+.arena-team-panel.palette-2,.team-list-card.palette-2>header{background:linear-gradient(135deg,#f39b2f,#8b5013)!important}
+.arena-team-panel.palette-3,.team-list-card.palette-3>header{background:linear-gradient(135deg,#8055cf,#442875)!important}
+.arena-team-panel.palette-4,.team-list-card.palette-4>header{background:linear-gradient(135deg,#2eae79,#165a3d)!important}
+.arena-team-panel.palette-5,.team-list-card.palette-5>header{background:linear-gradient(135deg,#24a8bd,#165665)!important}
+.arena-team-panel.palette-6,.team-list-card.palette-6>header{background:linear-gradient(135deg,#d7a52b,#745315)!important}
+.arena-team-panel.palette-7,.team-list-card.palette-7>header{background:linear-gradient(135deg,#7388ad,#35435e)!important}
+.arena-team-panel{
+  border:1px solid rgba(255,255,255,.18)!important;
+  box-shadow:inset 0 0 30px rgba(0,0,0,.18),0 8px 18px rgba(0,0,0,.22)!important;
+}
+
+/* Page tabs on both team and player list pages. */
+.page-switch-title{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:18px!important}
+.page-switch-buttons{display:flex;gap:8px}
+.page-switch-buttons button{
+  min-width:110px;
+  padding:9px 13px;
+  border-radius:8px;
+  border:1px solid rgba(75,165,235,.24);
+  color:#94abc0;
+  background:#081f36;
+}
+.page-switch-buttons button.active{
+  color:#fff;
+  border-color:#55b6ff;
+  background:linear-gradient(#1777bb,#0d4777);
+  box-shadow:0 0 17px rgba(57,164,244,.13);
+}
+.list-filter-large{display:flex;justify-content:center;gap:9px;flex-wrap:wrap;margin:14px 0}
+.list-filter-large button{min-width:70px;padding:9px;border:1px solid rgba(80,164,230,.2);border-radius:8px;background:#071b31;color:#7f9ab1}
+.list-filter-large button.active{color:#fff;border-color:#54b2f5;background:#125f99}
+.standalone-player-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:13px}
+.arena-player-card.standalone{min-height:260px!important}
+
+/* Larger, readable status footer. */
+.arena-status-footer{
+  min-height:70px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:12px!important;
+  padding:13px 18px!important;
+  border-top:1px solid rgba(73,167,242,.22)!important;
+  background:linear-gradient(180deg,rgba(7,25,44,.72),rgba(3,12,23,.95))!important;
+}
+.arena-status-footer span{
+  min-width:115px;
+  padding:10px 14px;
+  border-radius:999px;
+  text-align:center;
+  color:#d9edff!important;
+  font-size:12px!important;
+  font-weight:900;
+  border:1px solid rgba(82,172,239,.20);
+  background:rgba(10,40,68,.78);
+  box-shadow:inset 0 0 15px rgba(68,169,242,.04);
+}
+.arena-status-footer span:nth-child(3){color:#ffe38a!important;border-color:rgba(255,215,96,.22)}
+.arena-status-footer span:nth-child(4){color:#ff9caf!important;border-color:rgba(255,103,132,.22)}
+
+@media(max-width:1000px){
+  .arena-toolbar{grid-template-columns:1fr!important}
+  .toolbar-links{text-align:center}
+  .arena-roulette-control.dual.inline-control{max-width:520px;margin:auto}
+  .page-switch-title{align-items:flex-start!important;flex-direction:column!important}
+}

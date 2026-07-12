@@ -27,13 +27,15 @@ function makeTeams(settings, old = []) {
     id: old[i]?.id ?? i + 1,
     name: settings.teamNames[i] || `${i+1}팀`,
     points: Number(old[i]?.points ?? settings.teamPoints[i] ?? 1000),
-    roster: Array.isArray(old[i]?.roster) ? old[i].roster : []
+    roster: Array.isArray(old[i]?.roster) ? old[i].roster : [],
+    colorIndex: Number(old[i]?.colorIndex ?? i)
   }));
 }
 
 function AppShell({active,setActive,settings,children}) {
   const menu = [
     ['auction','경매 화면'],
+    ['list','전체목록'],
     ['teams','팀 목록'],
     ['players','선수 관리'],
     ['settings','설정']
@@ -250,7 +252,7 @@ function Auction({
       ? <img src={player.imageUrl} alt="" />
       : <div className={small?'portrait-placeholder small':'portrait-placeholder'}>
           <span>{initials}</span>
-          <i>{player?.main||'?'}</i>
+          {!small&&<i>{player?.main||'?'}</i>}
         </div>;
   };
 
@@ -259,19 +261,16 @@ function Auction({
     const sold=player.status==='sold';
     const unsold=player.status==='unsold';
     const team=teams.find(t=>t.id===player.soldTeamId);
+    const roleText=`${player.main}${player.sub&&player.sub!=='없음'?` / ${player.sub}`:''}`;
 
     return <button
       className={['arena-player-card',active?'picked':'',sold?'completed':'',unsold?'unsold':'',spinning&&active?'roulette-flash':''].join(' ')}
       onClick={()=>['waiting','unsold'].includes(player.status)&&choosePlayer(player,true)}
     >
-      <div className="card-topline"><span>{player.tier}</span><b>{player.main}</b></div>
+      <div className="card-topline"><span>{player.tier}</span><b>{roleText}</b></div>
       <div className="card-portrait"><PlayerPortrait player={player}/></div>
-      <div className="card-info-stack">
-        <strong>{player.name}</strong>
-        <span>{player.main}</span>
-        <span>{player.sub&&player.sub!=='없음'?player.sub:'없음'}</span>
-        <b>{Number(player.basePoint??100).toLocaleString()}P</b>
-      </div>
+      <div className="card-center-name">{player.name}</div>
+      <div className="card-base-point">{Number(player.basePoint??100).toLocaleString()}P</div>
       {sold&&<div className="card-stamp"><strong>선택 완료</strong><span>{team?.name} · {Number(player.soldPrice||0).toLocaleString()}P</span></div>}
       {unsold&&<div className="card-stamp unsold-stamp"><strong>유찰</strong></div>}
       {active&&player.status==='waiting'&&<div className="picked-crown">NEXT PICK</div>}
@@ -279,7 +278,7 @@ function Auction({
   };
 
   const TeamPanel=({team,side})=><section
-    className={`arena-team-panel side-${side} ${selectedTeam===team.id?'team-selected':''}`}
+    className={`arena-team-panel palette-${Number(team.colorIndex||0)%8} side-${side} ${selectedTeam===team.id?'team-selected':''}`}
     onClick={()=>view==='focus'&&openAssign(team)}
   >
     <div className="team-panel-copy">
@@ -293,8 +292,11 @@ function Auction({
         return <div className={member?'team-mini-card filled':'team-mini-card'} key={i}>
           {member?<>
             <PlayerPortrait player={member} small/>
-            <b>{member.name}</b>
-            <span>{member.price}P</span>
+            <div className="mini-card-copy">
+              <b>{member.name}</b>
+              <small>{member.main}{member.sub&&member.sub!=='없음'?`/${member.sub}`:''}</small>
+              <span>{member.price}P</span>
+            </div>
           </>:<i/>}
         </div>;
       })}
@@ -337,7 +339,7 @@ function Auction({
 
     <div className="draft-arena-shell">
       <header className="arena-toolbar">
-        <div className="arena-back toolbar-links"><button onClick={()=>setView('board')}>◇ 전체목록 보기</button><button onClick={()=>window.dispatchEvent(new CustomEvent('go-team-list'))}>◇ 팀 목록 보기</button></div>
+        <div className="arena-back toolbar-links"><span>LIVE DRAFT</span><small>선수를 추첨하고 팀을 선택하세요</small></div>
         <div className="arena-title">
           <small>GOCHUBAT DRAFT ARENA</small>
           <h2>{settings.title}</h2>
@@ -446,11 +448,41 @@ function Players({players,setPlayers}) {
     </div>
   </section>;
 }
-function TeamList({teams}){
+function FullPlayerList({players,teams,setActive,setCurrentPlayerId}){
+  const [filter,setFilter]=useState('ALL');
+  const shown=players.filter(p=>filter==='ALL'||p.main===filter);
+  const choose=(p)=>{setCurrentPlayerId(p.id);setActive('auction')};
+  return <section className="team-list-screen full-list-page">
+    <div className="panel-title page-switch-title">
+      <div><span>PLAYER DATABASE</span><h2>전체목록</h2></div>
+      <div className="page-switch-buttons">
+        <button className="active">전체목록</button>
+        <button onClick={()=>setActive('teams')}>팀 목록</button>
+      </div>
+    </div>
+    <div className="list-filter-large">{['ALL',...ROLES].map(r=><button key={r} className={filter===r?'active':''} onClick={()=>setFilter(r)}>{r}</button>)}</div>
+    <div className="standalone-player-grid">
+      {shown.map(p=>{
+        const team=teams.find(t=>t.id===p.soldTeamId);
+        const roles=`${p.main}${p.sub&&p.sub!=='없음'?` / ${p.sub}`:''}`;
+        return <button key={p.id} className={`arena-player-card standalone ${p.status==='sold'?'completed':''} ${p.status==='unsold'?'unsold':''}`} onClick={()=>['waiting','unsold'].includes(p.status)&&choose(p)}>
+          <div className="card-topline"><span>{p.tier}</span><b>{roles}</b></div>
+          <div className="card-portrait"><div className="portrait-placeholder"><span>{p.name.slice(0,2)}</span></div></div>
+          <div className="card-center-name">{p.name}</div>
+          <div className="card-base-point">{Number(p.basePoint??100).toLocaleString()}P</div>
+          {p.status==='sold'&&<div className="card-stamp"><strong>선택 완료</strong><span>{team?.name} · {p.soldPrice}P</span></div>}
+          {p.status==='unsold'&&<div className="card-stamp unsold-stamp"><strong>유찰</strong></div>}
+        </button>
+      })}
+    </div>
+  </section>;
+}
+
+function TeamList({teams,setActive}){
   return <section className="team-list-screen">
-    <div className="panel-title"><div><span>TEAM DATABASE</span><h2>팀 목록</h2></div><b>{teams.length}개 팀</b></div>
+    <div className="panel-title page-switch-title"><div><span>TEAM DATABASE</span><h2>팀 목록</h2></div><div className="page-switch-buttons"><button onClick={()=>setActive('list')}>전체목록</button><button className="active">팀 목록</button></div></div>
     <div className="team-list-grid">
-      {teams.map((team,index)=><article className={`team-list-card palette-${index%8}`} key={team.id}>
+      {teams.map((team,index)=><article className={`team-list-card palette-${Number(team.colorIndex??index)%8}`} key={team.id}>
         <header><div><small>TEAM {String(index+1).padStart(2,'0')}</small><h3>{team.name}</h3></div><strong>{team.points.toLocaleString()}P</strong></header>
         <div className="team-list-members">
           {team.roster.length?team.roster.map(m=><div className="team-list-member" key={`${team.id}-${m.id}`}>
@@ -894,7 +926,8 @@ export default function Home(){
 
   let view=<Auction players={players} setPlayers={setPlayers} teams={teams} setTeams={setTeams} settings={settings} recent={recent} setRecent={setRecent} currentPlayerId={currentPlayerId} setCurrentPlayerId={setCurrentPlayerId}
       spectatorEvent={spectatorEvent} setSpectatorEvent={setSpectatorEvent} unsoldList={unsoldList} setUnsoldList={setUnsoldList} onStateChanged={onStateChanged}/>;
-  if(active==='teams')view=<TeamList teams={teams}/>;
+  if(active==='list')view=<FullPlayerList players={players} teams={teams} setActive={setActive} setCurrentPlayerId={setCurrentPlayerId}/>;
+  if(active==='teams')view=<TeamList teams={teams} setActive={setActive}/>;
   if(active==='players')view=<Players players={players} setPlayers={setPlayers}/>;
 
   if(active==='settings')view=<SettingsView settings={settings} setSettings={setSettings} teams={teams} setTeams={setTeams}/>;
