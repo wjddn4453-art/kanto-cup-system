@@ -6,6 +6,7 @@ import { Users, Gavel, Dices, Settings, Eye, Trophy, Clock3, UserRoundCog, Rotat
 
 const KEY = 'gochubat-v02';
 const ROLES = ['TOP','JUG','MID','ADC','SUP'];
+const TIERS = ['챌린저','그랜드마스터','마스터','다이아몬드','에메랄드','플래티넘','골드','실버','브론즈','아이언'];
 const DEFAULT_SETTINGS = {
   title: '제3회 관동지방컵', teamCount: 5, timer: 15,
   resetOnBid: true, sound: true, animation: true,
@@ -32,23 +33,23 @@ function makeTeams(settings, old = []) {
 
 function AppShell({active,setActive,settings,children}) {
   const menu = [
-    ['auction',Gavel,'실시간 경매'],['players',Users,'선수 관리'],
-    ['roulette',Dices,'랜덤 룰렛'],['history',History,'최근 낙찰'],
-    ['watch',Eye,'관전자 화면'],['settings',Settings,'설정']
+    ['auction','경매 화면'],
+    ['players','선수 관리'],
+    ['settings','설정']
   ];
-  return <main className="app-shell">
-    <aside className="sidebar">
-      <div className="logo"><div className="brand-mark">🌶️</div><div><strong>고추밭</strong><small>AUCTION SYSTEM</small></div></div>
-      <nav>{menu.map(([id,Icon,label])=><button key={id} className={active===id?'nav-item active':'nav-item'} onClick={()=>setActive(id)}><Icon size={18}/><span>{label}</span></button>)}</nav>
-      <div className="sidebar-card"><UserRoundCog size={17}/><div><b>최고 관리자</b><small>운영자 권한은 다음 단계</small></div></div>
-    </aside>
-    <section className="content">
-      <header className="topbar"><div><span className="eyebrow">GOCHUBAT TOURNAMENT</span><h1>{settings.title}</h1></div><span className="live-pill"><i/> 준비 중</span></header>
-      {children}
-    </section>
+  return <main className="single-shell">
+    <header className="single-topbar">
+      <div className="single-brand">
+        <div className="single-ball"><span>G</span></div>
+        <div><small>GOCHUBAT MONSTER DRAFT</small><h1>{settings.title}</h1></div>
+      </div>
+      <nav className="single-nav">
+        {menu.map(([id,label])=><button key={id} className={active===id?'active':''} onClick={()=>setActive(id)}>{label}</button>)}
+      </nav>
+    </header>
+    <section className="single-content">{children}</section>
   </main>;
 }
-
 function Auction({
   players,setPlayers,teams,setTeams,settings,recent,setRecent,
   currentPlayerId,setCurrentPlayerId,
@@ -61,12 +62,18 @@ function Auction({
   const [assignModal,setAssignModal]=useState(false);
   const [spinning,setSpinning]=useState(false);
   const [rouletteName,setRouletteName]=useState('룰렛 대기');
+  const [rouletteMode,setRouletteMode]=useState('normal');
+  const [rouletteItems,setRouletteItems]=useState([]);
+  const [rouletteStep,setRouletteStep]=useState(0);
+  const [rouletteOverlay,setRouletteOverlay]=useState(false);
   const [overlay,setOverlay]=useState(null);
   const [stack,setStack]=useState([]);
 
   const waiting=players.filter(p=>p.status==='waiting');
   const current=players.find(p=>p.id===currentPlayerId);
-  const roulettePool=players.filter(p=>p.status==='waiting'&&!p.excluded);
+  const normalPool=players.filter(p=>p.status==='waiting'&&!p.excluded);
+  const unsoldPool=players.filter(p=>p.status==='unsold');
+  const roulettePool=rouletteMode==='unsold'?unsoldPool:normalPool;
   const filteredPlayers=players.filter(p=>filter==='ALL'||p.main===filter);
 
   const pushEvent=(event)=>{
@@ -87,7 +94,7 @@ function Auction({
   ]);
 
   const choosePlayer=(player,openFocus=true)=>{
-    if(!player||player.status!=='waiting')return;
+    if(!player||!['waiting','unsold'].includes(player.status))return;
     setCurrentPlayerId(player.id);
     setRouletteName(player.name);
     setSelectedTeam(null);
@@ -99,34 +106,49 @@ function Auction({
     });
   };
 
-  const spinRoulette=()=>{
+  const spinRoulette=(mode='normal')=>{
     if(spinning)return;
-    if(!roulettePool.length)return alert('룰렛에 남은 선수가 없습니다.');
+    const pool=mode==='unsold'?unsoldPool:normalPool;
+    if(!pool.length)return alert(mode==='unsold'?'유찰 매물이 없습니다.':'룰렛에 남은 선수가 없습니다.');
+
+    setRouletteMode(mode);
     setView('board');
     setSpinning(true);
-    pushEvent({type:'roulette-start'});
+    setRouletteOverlay(true);
+    setRouletteItems(pool);
+    setRouletteStep(0);
+    pushEvent({type:'roulette-start',mode});
+
     let tick=0;
-    const max=28;
-    const timer=setInterval(()=>{
-      const preview=roulettePool[Math.floor(Math.random()*roulettePool.length)];
+    let delay=70;
+    const total=30;
+
+    const run=()=>{
+      const preview=pool[tick%pool.length];
+      setRouletteStep(tick%pool.length);
       setRouletteName(preview.name);
       setCurrentPlayerId(preview.id);
-      pushEvent({type:'roulette-preview',name:preview.name});
+      pushEvent({type:'roulette-preview',name:preview.name,mode});
       tick+=1;
-      if(tick>=max){
-        clearInterval(timer);
-        const picked=roulettePool[Math.floor(Math.random()*roulettePool.length)];
+
+      if(tick>=total){
+        const picked=pool[(tick-1)%pool.length];
         setRouletteName(picked.name);
         setCurrentPlayerId(picked.id);
-        pushEvent({
-          type:'roulette-result',
-          player:{id:picked.id,name:picked.name,tier:picked.tier,main:picked.main,sub:picked.sub}
-        });
+        pushEvent({type:'roulette-result',player:picked,mode});
         setSpinning(false);
+        setTimeout(()=>{
+          setRouletteOverlay(false);
+          setView('focus');
+        },900);
+        return;
       }
-    },85);
-  };
 
+      delay=Math.min(320,70+tick*9);
+      setTimeout(run,delay);
+    };
+    run();
+  };
   const openAssign=(team)=>{
     if(!current)return alert('먼저 선수를 선택하세요.');
     if(current.status!=='waiting')return;
@@ -234,7 +256,7 @@ function Auction({
     return player?.imageUrl
       ? <img src={player.imageUrl} alt="" />
       : <div className={small?'portrait-placeholder small':'portrait-placeholder'}>
-          <span>{initials}</span>
+          <span>{player?.name||initials}</span>
           <i>{player?.main||'?'}</i>
         </div>;
   };
@@ -253,14 +275,13 @@ function Auction({
         unsold?'unsold':'',
         spinning&&active?'roulette-flash':''
       ].join(' ')}
-      onClick={()=>player.status==='waiting'&&choosePlayer(player,true)}
+      onClick={()=>['waiting','unsold'].includes(player.status)&&choosePlayer(player,true)}
     >
       <div className="card-topline">
         <span>{player.tier}</span>
         <b>{player.main}</b>
       </div>
       <div className="card-portrait"><PlayerPortrait player={player}/></div>
-      <div className="card-name">{player.name}</div>
       <div className="card-role">{player.main} / {player.sub}</div>
       {sold&&<div className="card-stamp">
         <strong>선택 완료</strong>
@@ -295,6 +316,21 @@ function Auction({
   </section>;
 
   return <>
+    {rouletteOverlay&&<div className="vertical-roulette-backdrop">
+      <div className="vertical-roulette-panel">
+        <span>{rouletteMode==='unsold'?'UNSOLD MARKET':'NEXT PLAYER'}</span>
+        <h2>{rouletteMode==='unsold'?'유찰 매물 룰렛':'일반 선수 룰렛'}</h2>
+        <div className="vertical-window">
+          <div className="vertical-list" style={{transform:`translateY(${-rouletteStep*64}px)`}}>
+            {rouletteItems.concat(rouletteItems).map((p,i)=><div className="vertical-name" key={`${p.id}-${i}`}>
+              <b>{p.name}</b><small>{p.tier} · {p.main}{p.sub&&p.sub!=='없음'?`/${p.sub}`:''}</small>
+            </div>)}
+          </div>
+          <div className="vertical-selector"/>
+        </div>
+        <strong>{rouletteName}</strong>
+      </div>
+    </div>}
     {overlay&&<div className={`result-overlay arena-result ${overlay.type}`}>
       <div className="arena-result-lines left"/><div className="arena-result-lines right"/>
       <div className="result-card">
@@ -330,16 +366,21 @@ function Auction({
 
     <div className="draft-arena-shell">
       <header className="arena-toolbar">
-        <div className="arena-back">◇ 경매 진행</div>
+        <div className="arena-back"><button onClick={()=>setView('board')}>◇ 전체목록 보기</button></div>
         <div className="arena-title">
           <small>GOCHUBAT DRAFT ARENA</small>
           <h2>{settings.title}</h2>
         </div>
-        <div className="arena-roulette-control">
+        <div className="arena-roulette-control dual">
           <span>{rouletteName}</span>
-          <button onClick={spinRoulette} disabled={spinning||!roulettePool.length}>
-            {spinning?'추첨 중':'룰렛 돌리기 »'}
-          </button>
+          <div>
+            <button onClick={()=>spinRoulette('normal')} disabled={spinning||!normalPool.length}>
+              {spinning&&rouletteMode==='normal'?'추첨 중':'일반 룰렛'}
+            </button>
+            <button className="unsold-spin" onClick={()=>spinRoulette('unsold')} disabled={spinning||!unsoldPool.length}>
+              {spinning&&rouletteMode==='unsold'?'추첨 중':`유찰 룰렛 ${unsoldPool.length}`}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -352,7 +393,7 @@ function Auction({
           <span>{role}</span>
         </button>)}
         <div className="arena-toolbar-actions">
-          {view==='focus'&&<button onClick={()=>setView('board')}>전체 선수</button>}
+          {view==='focus'&&<button onClick={()=>setView('board')}>돌아가기</button>}
           <button onClick={undo}>되돌리기</button>
         </div>
       </div>
@@ -404,14 +445,34 @@ function Auction({
 }
 
 function Players({players,setPlayers}) {
-  const [f,setF]=useState({name:'',tier:'',main:'TOP',sub:'JUG'});
-  const add=()=>{if(!f.name.trim()||!f.tier.trim())return;setPlayers(p=>[...p,{id:Date.now(),...f,status:'waiting',excluded:false}]);setF({name:'',tier:'',main:'TOP',sub:'JUG'});};
-  return <section className="panel full-panel"><div className="panel-title"><div><span>PLAYER DATABASE</span><h2>선수 관리</h2></div><b>{players.length}명</b></div>
-    <div className="player-form"><input value={f.name} onChange={e=>setF({...f,name:e.target.value})} placeholder="선수 이름"/><input value={f.tier} onChange={e=>setF({...f,tier:e.target.value})} placeholder="티어"/><select value={f.main} onChange={e=>setF({...f,main:e.target.value})}>{ROLES.map(r=><option key={r}>{r}</option>)}</select><select value={f.sub} onChange={e=>setF({...f,sub:e.target.value})}>{ROLES.map(r=><option key={r}>{r}</option>)}</select><button className="primary-btn" onClick={add}>선수 추가</button></div>
-    <div className="player-table"><div className="table-head"><span>선수</span><span>티어</span><span>주라인</span><span>부라인</span><span>상태</span><span/></div>{players.map(p=><div className="table-row" key={p.id}><b>{p.name}</b><span>{p.tier}</span><span>{p.main}</span><span>{p.sub}</span><span className={`wait-tag ${p.status}`}>{p.status==='waiting'?'대기':p.status==='sold'?'낙찰':'유찰'}</span><div className="row-actions">{p.status!=='waiting'&&<button onClick={()=>setPlayers(ps=>ps.map(x=>x.id===p.id?{...x,status:'waiting',excluded:false}:x))}>복구</button>}<button onClick={()=>setPlayers(ps=>ps.filter(x=>x.id!==p.id))}>삭제</button></div></div>)}</div>
+  const [f,setF]=useState({name:'',tier:'마스터',main:'TOP',sub:'없음'});
+  const add=()=>{
+    if(!f.name.trim())return;
+    setPlayers(p=>[...p,{id:Date.now(),...f,status:'waiting',excluded:false,imageUrl:''}]);
+    setF({name:'',tier:'마스터',main:'TOP',sub:'없음'});
+  };
+  return <section className="panel full-panel">
+    <div className="panel-title"><div><span>PLAYER DATABASE</span><h2>선수 관리</h2></div><b>{players.length}명</b></div>
+    <div className="player-form">
+      <input value={f.name} onChange={e=>setF({...f,name:e.target.value})} placeholder="선수 이름"/>
+      <select value={f.tier} onChange={e=>setF({...f,tier:e.target.value})}>{TIERS.map(t=><option key={t}>{t}</option>)}</select>
+      <select value={f.main} onChange={e=>setF({...f,main:e.target.value})}>{ROLES.map(r=><option key={r}>{r}</option>)}</select>
+      <select value={f.sub} onChange={e=>setF({...f,sub:e.target.value})}><option>없음</option>{ROLES.map(r=><option key={r}>{r}</option>)}</select>
+      <button className="primary-btn" onClick={add}>선수 추가</button>
+    </div>
+    <div className="player-table">
+      <div className="table-head"><span>선수</span><span>티어</span><span>주라인</span><span>부라인</span><span>상태</span><span/></div>
+      {players.map(p=><div className="table-row" key={p.id}>
+        <b>{p.name}</b><span>{p.tier}</span><span>{p.main}</span><span>{p.sub||'없음'}</span>
+        <span className={`wait-tag ${p.status}`}>{p.status==='waiting'?'대기':p.status==='sold'?'낙찰':'유찰 매물'}</span>
+        <div className="row-actions">
+          {p.status!=='waiting'&&<button onClick={()=>setPlayers(ps=>ps.map(x=>x.id===p.id?{...x,status:'waiting',excluded:false}:x))}>복구</button>}
+          <button onClick={()=>setPlayers(ps=>ps.filter(x=>x.id!==p.id))}>삭제</button>
+        </div>
+      </div>)}
+    </div>
   </section>;
 }
-
 function Roulette({players,setPlayers,setActive,setCurrentPlayerId}) {
   const [picked,setPicked]=useState(null);
   const [spinning,setSpinning]=useState(false);
@@ -842,20 +903,7 @@ export default function Home(){
   let view=<Auction players={players} setPlayers={setPlayers} teams={teams} setTeams={setTeams} settings={settings} recent={recent} setRecent={setRecent} currentPlayerId={currentPlayerId} setCurrentPlayerId={setCurrentPlayerId}
       spectatorEvent={spectatorEvent} setSpectatorEvent={setSpectatorEvent} unsoldList={unsoldList} setUnsoldList={setUnsoldList} onStateChanged={onStateChanged}/>;
   if(active==='players')view=<Players players={players} setPlayers={setPlayers}/>;
-  if(active==='roulette')view=<Roulette players={players} setPlayers={setPlayers} setActive={setActive} setCurrentPlayerId={setCurrentPlayerId}/>;
-  if(active==='history')view=<HistoryView recent={recent}/>;
-  if(active==='watch')view=<Watch
-    settings={settings}
-    teams={teams}
-    players={players}
-    recent={recent}
-    currentPlayerId={currentPlayerId}
-    livePrice={livePrice}
-    liveTeamName={liveTeamName}
-    liveTimer={liveTimer}
-    spectatorEvent={spectatorEvent} unsoldList={unsoldList}
-  />;
-  if(active==='presentation')view=<Presentation settings={settings} teams={teams} players={players} recent={recent} currentPlayerId={currentPlayerId} livePrice={livePrice} liveTeamName={liveTeamName} liveTimer={liveTimer} spectatorEvent={spectatorEvent} unsoldList={unsoldList}/>;
+
   if(active==='settings')view=<SettingsView settings={settings} setSettings={setSettings} teams={teams} setTeams={setTeams}/>;
   return <AppShell active={active} setActive={setActive} settings={settings} roomStatus={roomStatus}>{view}</AppShell>;
 }

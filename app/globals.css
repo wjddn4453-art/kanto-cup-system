@@ -2300,3 +2300,34 @@ input:focus,select:focus{
   .arena-focus-layout .focus-player-stage{order:-1}
   .arena-toolbar{grid-template-columns:1fr}.arena-back{display:none}.arena-roulette-control{justify-self:center;margin-top:12px}
 }
+
+
+/* v2.0 single-screen navigation + monster background */
+.single-shell{min-height:100vh;background:
+linear-gradient(rgba(2,8,18,.80),rgba(2,7,15,.96)),
+radial-gradient(circle at 50% -10%,rgba(44,153,255,.24),transparent 42%),
+repeating-linear-gradient(130deg,transparent 0 95px,rgba(76,164,255,.025) 96px 97px),#020711}
+.single-topbar{min-height:88px;display:flex;justify-content:space-between;align-items:center;gap:20px;padding:13px 22px;border-bottom:1px solid rgba(72,168,255,.26);background:linear-gradient(180deg,rgba(5,24,46,.97),rgba(3,13,27,.97));box-shadow:0 10px 35px rgba(0,0,0,.35)}
+.single-brand{display:flex;align-items:center;gap:13px}.single-brand small{color:#60b6fa;font-size:8px;letter-spacing:1.8px}.single-brand h1{margin:3px 0 0;font-family:"Pretendard","Noto Sans KR",sans-serif;font-weight:1000;font-size:25px}
+.single-ball{width:50px;height:50px;display:grid;place-items:center;border-radius:50%;border:5px solid #1d86ec;background:linear-gradient(#ef4050 0 46%,#151515 46% 54%,#fff 54%);box-shadow:0 0 20px rgba(36,143,255,.38)}.single-ball span{width:18px;height:18px;display:grid;place-items:center;border-radius:50%;border:3px solid #222;background:white;color:#17426a;font-size:9px}
+.single-nav{display:flex;gap:8px}.single-nav button{padding:9px 15px;border-radius:9px;border:1px solid rgba(75,158,228,.20);background:#08233e;color:#91abc1}.single-nav button.active,.single-nav button:hover{color:#fff;border-color:#4ca9ef;background:linear-gradient(#1878bd,#0c4677)}
+.single-content{padding:16px}
+.app-shell,.sidebar,.content>.topbar{display:none!important}
+.arena-back button{border:0;background:none;color:#aab6ca;font-weight:900}
+.arena-roulette-control.dual>div{display:flex;justify-content:center;gap:7px;margin-top:7px}.arena-roulette-control.dual button{padding:7px 10px;border:1px solid rgba(104,176,235,.25);border-radius:7px;background:#0b3152;color:#e8f6ff}.arena-roulette-control.dual .unsold-spin{border-color:rgba(255,104,128,.35);background:#5d1a2a;color:#ffd2da}
+.card-name{display:none!important}
+.portrait-placeholder span{font-family:"Pretendard","Noto Sans KR",sans-serif;font-size:28px;font-weight:1000}
+.vertical-roulette-backdrop{position:fixed;z-index:7000;inset:0;display:grid;place-items:center;background:rgba(1,5,13,.84);backdrop-filter:blur(7px)}
+.vertical-roulette-panel{width:min(500px,calc(100vw - 30px));padding:30px;text-align:center;border:1px solid rgba(98,183,255,.38);border-radius:18px;background:linear-gradient(145deg,#0b2d50,#04101f);box-shadow:0 30px 100px rgba(0,0,0,.68),0 0 55px rgba(45,153,247,.18)}
+.vertical-roulette-panel>span{color:#63baff;font-size:8px;letter-spacing:2px}.vertical-roulette-panel h2{margin:5px 0 18px;font-size:22px}.vertical-window{height:256px;position:relative;overflow:hidden;border:1px solid rgba(100,173,231,.24);border-radius:13px;background:#030d19}.vertical-list{transition:transform .15s ease-out}.vertical-name{height:64px;display:grid;place-items:center;align-content:center;border-bottom:1px solid rgba(76,139,194,.12);opacity:.45}.vertical-name b{font-size:22px}.vertical-name small{margin-top:2px;color:#88a9c1;font-size:9px}.vertical-selector{position:absolute;left:12px;right:12px;top:96px;height:64px;border:2px solid #ffdc73;border-radius:10px;box-shadow:0 0 26px rgba(255,219,105,.25);pointer-events:none}.vertical-roulette-panel>strong{display:block;margin-top:15px;color:#ffe28b;font-size:29px}
+body,.arena-player-card,.team-panel-copy h3,.focus-player-card h2{font-family:"Pretendard","SUIT","Noto Sans KR",sans-serif!important}
+.arena-player-card,.arena-team-panel,.focus-player-card{box-shadow:0 8px 24px rgba(0,0,0,.35),inset 0 0 18px rgba(255,255,255,.03)}
+.draft-arena-shell{background:
+linear-gradient(rgba(4,9,25,.68),rgba(3,6,19,.91)),
+radial-gradient(circle at 50% 18%,rgba(63,130,255,.22),transparent 37%),
+radial-gradient(circle at 15% 75%,rgba(65,211,154,.10),transparent 30%),
+radial-gradient(circle at 85% 70%,rgba(255,210,84,.09),transparent 30%),
+repeating-radial-gradient(circle at 25% 15%,rgba(255,255,255,.38) 0 1px,transparent 1px 84px),
+linear-gradient(135deg,#07122c,#04071b 60%,#0b1230)!important}
+.arena-player-card.picked{animation:pokemonSpark .8s infinite alternate}@keyframes pokemonSpark{to{filter:brightness(1.22);box-shadow:0 0 0 3px rgba(255,237,115,.28),0 0 38px rgba(255,226,78,.62)}}
+@media(max-width:800px){.single-topbar{align-items:flex-start;flex-direction:column}.single-nav{flex-wrap:wrap}.single-content{padding:9px}}
