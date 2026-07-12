@@ -1,0 +1,9 @@
+create extension if not exists pgcrypto;
+create table if not exists public.auction_rooms(id uuid primary key default gen_random_uuid(),room_code text unique not null,admin_key_hash text not null,state jsonb not null default '{}'::jsonb,event jsonb,updated_at timestamptz not null default now());
+alter table public.auction_rooms enable row level security;
+drop policy if exists "public rooms are readable" on public.auction_rooms;
+create policy "public rooms are readable" on public.auction_rooms for select using(true);
+create or replace function public.create_auction_room(p_room_code text,p_admin_key text,p_state jsonb) returns void language plpgsql security definer set search_path=public as $$ begin insert into public.auction_rooms(room_code,admin_key_hash,state) values(upper(trim(p_room_code)),crypt(p_admin_key,gen_salt('bf')),coalesce(p_state,'{}'::jsonb)); end; $$;
+create or replace function public.update_auction_room(p_room_code text,p_admin_key text,p_state jsonb,p_event jsonb default null) returns void language plpgsql security definer set search_path=public as $$ declare h text; begin select admin_key_hash into h from public.auction_rooms where room_code=upper(trim(p_room_code)); if h is null or crypt(p_admin_key,h)<>h then raise exception '운영 코드가 올바르지 않습니다.'; end if; update public.auction_rooms set state=p_state,event=p_event,updated_at=now() where room_code=upper(trim(p_room_code)); end; $$;
+grant select on public.auction_rooms to anon,authenticated; grant execute on function public.create_auction_room(text,text,jsonb) to anon,authenticated; grant execute on function public.update_auction_room(text,text,jsonb,jsonb) to anon,authenticated;
+do $$ begin alter publication supabase_realtime add table public.auction_rooms; exception when duplicate_object then null; end $$;

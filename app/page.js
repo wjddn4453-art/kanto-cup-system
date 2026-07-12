@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { Users, Gavel, Dices, Settings, Eye, Trophy, Clock3, UserRoundCog, RotateCcw, Save, History, Sparkles, Plus, Trash2 } from 'lucide-react';
+import { useEffect, useMemo, useState, useRef } from 'react';
+import { supabase } from '@/lib/supabase/client';
+import { Users, Gavel, Dices, Settings, Eye, Trophy, Clock3, UserRoundCog, RotateCcw, Save, History, Sparkles, Plus, Trash2, Maximize2, Wifi, WifiOff, KeyRound } from 'lucide-react';
 
 const KEY = 'gochubat-v02';
 const ROLES = ['TOP','JUG','MID','ADC','SUP'];
@@ -51,7 +52,7 @@ function AppShell({active,setActive,settings,children}) {
 function Auction({
   players,setPlayers,teams,setTeams,settings,recent,setRecent,
   currentPlayerId,setCurrentPlayerId,
-  spectatorEvent,setSpectatorEvent
+  spectatorEvent,setSpectatorEvent,unsoldList,setUnsoldList,onStateChanged
 }) {
   const waiting = players.filter(p=>p.status==='waiting');
   const [selectedTeam,setSelectedTeam] = useState(null);
@@ -66,6 +67,7 @@ function Auction({
   const pushSpectatorEvent=(event)=>{
     const next={...event,id:Date.now()};
     setSpectatorEvent(next);
+    onStateChanged?.({spectatorEvent:next});
     try{
       localStorage.setItem('gochubat-spectator-event',JSON.stringify(next));
       const channel=new BroadcastChannel('gochubat-auction-live');
@@ -143,6 +145,7 @@ function Auction({
     snap();
     const nextPrice=price+n;
     setPrice(nextPrice);
+    onStateChanged?.({livePrice:nextPrice,liveTeamName:team.name,liveTimer:settings.resetOnBid?settings.timer:timer});
     pushSpectatorEvent({
       type:'bid',
       price:nextPrice,
@@ -194,6 +197,7 @@ function Auction({
       time:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})
     };
     setRecent(r=>[sale,...r].slice(0,30));
+    setUnsoldList?.(u=>u.filter(x=>x.player!==current.name));
     setOverlay({type:'sold',...sale});
     pushSpectatorEvent({type:'sold',sale});
     selectPlayer(null);
@@ -207,8 +211,10 @@ function Auction({
     setPlayers(ps=>ps.map(p=>p.id===current.id?{
       ...p,status:'unsold',excluded:true
     }:p));
+    const entry={id:Date.now(),player:current.name,tier:current.tier,main:current.main,sub:current.sub,time:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})};
+    setUnsoldList?.(u=>[entry,...u.filter(x=>x.player!==current.name)].slice(0,30));
     setOverlay({type:'unsold',player:current.name});
-    pushSpectatorEvent({type:'unsold',player:current.name});
+    pushSpectatorEvent({type:'unsold',player:current.name,entry});
     selectPlayer(null);
     setRouletteName('대기 중');
     setTimeout(()=>setOverlay(null),1300);
@@ -574,7 +580,7 @@ function SettingsView({settings,setSettings,teams,setTeams}) {
 function HistoryView({recent}) {return <section className="panel full-panel"><div className="panel-title"><div><span>AUCTION HISTORY</span><h2>최근 낙찰</h2></div><b>{recent.length}건</b></div><div className="history-list">{recent.length?recent.map((x,i)=><div className="history-row" key={x.id}><span>{String(i+1).padStart(2,'0')}</span><div><b>{x.player}</b><small>{x.time}</small></div><span>{x.team}</span><strong>{x.price}P</strong></div>):<div className="empty-state large">낙찰 기록 없음</div>}</div></section>}
 function Watch({
   settings,teams,players,recent,currentPlayerId,
-  livePrice,liveTeamName,liveTimer,spectatorEvent
+  livePrice,liveTeamName,liveTimer,spectatorEvent,unsoldList
 }) {
   const current=players.find(p=>p.id===currentPlayerId);
   const completed=players.filter(p=>p.status!=='waiting').length;
@@ -701,6 +707,13 @@ function Watch({
       </div>
     </section>
 
+    <section className="spectator-unsold-section">
+      <div className="spectator-section-title"><div><span>UNSOLD PLAYERS</span><h3>유찰 선수</h3></div><b>{unsoldList.length}명</b></div>
+      <div className="spectator-unsold-list">
+        {unsoldList.length?unsoldList.slice(0,12).map(x=><div className="spectator-unsold-row" key={x.id}><div><b>{x.player}</b><small>{x.tier||''}{x.main?` · ${x.main}/${x.sub}`:''}</small></div><span>{x.time}</span></div>):<div className="watch-empty">현재 유찰된 선수가 없습니다.</div>}
+      </div>
+    </section>
+
     <section className="spectator-rosters-section">
       <div className="spectator-section-title">
         <div><span>TEAM ROSTERS</span><h3>팀별 영입 현황</h3></div>
@@ -741,6 +754,13 @@ function Watch({
   </section>;
 }
 
+function Presentation({settings,teams,players,recent,currentPlayerId,livePrice,liveTeamName,liveTimer,spectatorEvent,unsoldList}){
+ const current=players.find(p=>p.id===currentPlayerId);
+ const [rName,setRName]=useState('대기 중'); const [rActive,setRActive]=useState(false);
+ useEffect(()=>{const e=spectatorEvent;if(!e)return;if(e.type==='roulette-start'){setRActive(true);setRName('추첨 시작')}if(e.type==='roulette-preview'){setRActive(true);setRName(e.name)}if(e.type==='roulette-result'){setRActive(false);setRName(e.player?.name||'결과')}},[spectatorEvent]);
+ return <div className="presentation-screen"><header><div><span>GOCHUBAT AUCTION</span><h1>{settings.title}</h1></div><div className="presentation-timer">{liveTimer}</div></header><main><section className="presentation-player"><div className="presentation-role">{current?.main??'?'}</div><div><small>{current?.tier??'선수 없음'}</small><h2>{current?.name??'다음 룰렛 대기'}</h2><p>{current?`${current.main} / ${current.sub}`:'룰렛을 기다리는 중'}</p></div></section><section className="presentation-bid"><span>현재 입찰가</span><strong>{Number(livePrice||0).toLocaleString()}P</strong><p>{liveTeamName||'입찰 팀 없음'}</p></section><section className="presentation-roulette"><div className={rActive?'presentation-wheel active':'presentation-wheel'}><Dices size={40}/></div><strong>{rName}</strong><small>{rActive?'룰렛 진행 중':'다음 추첨 대기'}</small></section></main><footer><div className="presentation-teams">{teams.map(t=><article key={t.id}><header><b>{t.name}</b><strong>{t.points.toLocaleString()}P</strong></header><div>{t.roster.map(m=><span key={`${t.id}-${m.id}`}>{m.name}<i>{m.price}P</i></span>)}</div></article>)}</div><div className="presentation-side"><section><h3>최근 낙찰</h3>{recent.slice(0,5).map(x=><p key={x.id}>{x.player}<b>{x.team} · {x.price}P</b></p>)}</section><section><h3>유찰</h3>{unsoldList.slice(0,5).map(x=><p key={x.id}>{x.player}</p>)}</section></div></footer></div>;
+}
+
 export default function Home(){
   const [active,setActive]=useState('auction');
   const [settings,setSettings]=useState(DEFAULT_SETTINGS);
@@ -749,12 +769,14 @@ export default function Home(){
   const [recent,setRecent]=useState([]);
   const [currentPlayerId,setCurrentPlayerId]=useState(null);
   const [spectatorEvent,setSpectatorEvent]=useState(null);
+  const [unsoldList,setUnsoldList]=useState([]);
+  const [roomStatus,setRoomStatus]=useState({connected:false,roomCode:'GOCHU1',adminKey:''});
   const [livePrice,setLivePrice]=useState(0);
   const [liveTeamName,setLiveTeamName]=useState('');
   const [liveTimer,setLiveTimer]=useState(DEFAULT_SETTINGS.timer);
   const [ready,setReady]=useState(false);
   useEffect(()=>{try{const raw=localStorage.getItem(KEY);if(raw){const x=JSON.parse(raw);const s={...DEFAULT_SETTINGS,...x.settings};setSettings(s);setPlayers(x.players||DEFAULT_PLAYERS);setTeams(makeTeams(s,x.teams||[]));setRecent(x.recent||[]);setCurrentPlayerId(x.currentPlayerId??null);}}catch{}setReady(true)},[]);
-  useEffect(()=>{if(ready)localStorage.setItem(KEY,JSON.stringify({settings,players,teams,recent,currentPlayerId}));},[ready,settings,players,teams,recent,currentPlayerId]);
+  useEffect(()=>{if(ready)localStorage.setItem(KEY,JSON.stringify({settings,players,teams,recent,currentPlayerId,unsoldList}));},[ready,settings,players,teams,recent,currentPlayerId,unsoldList]);
 
   useEffect(()=>{
     const ev=spectatorEvent;
@@ -779,8 +801,12 @@ export default function Home(){
     }
   },[spectatorEvent,settings.timer]);
 
+  const sharedState=()=>({settings,players,teams,recent,unsoldList,currentPlayerId,livePrice,liveTeamName,liveTimer,spectatorEvent});
+  const onStateChanged=async(extra={})=>{if(!supabase||!roomStatus.connected||!roomStatus.adminKey)return;await supabase.rpc('update_auction_room',{p_room_code:roomStatus.roomCode,p_admin_key:roomStatus.adminKey,p_state:{...sharedState(),...extra},p_event:extra.spectatorEvent||spectatorEvent||null});};
+  useEffect(()=>{if(!supabase||!roomStatus.connected)return;let ch;(async()=>{const {data}=await supabase.from('auction_rooms').select('state').eq('room_code',roomStatus.roomCode).maybeSingle();if(data?.state){const x=data.state;if(x.settings)setSettings(x.settings);if(x.players)setPlayers(x.players);if(x.teams)setTeams(x.teams);if(x.recent)setRecent(x.recent);if(x.unsoldList)setUnsoldList(x.unsoldList);if('currentPlayerId'in x)setCurrentPlayerId(x.currentPlayerId)}ch=supabase.channel('room-'+roomStatus.roomCode).on('postgres_changes',{event:'UPDATE',schema:'public',table:'auction_rooms',filter:`room_code=eq.${roomStatus.roomCode}`},({new:n})=>{const x=n.state||{};if(x.settings)setSettings(x.settings);if(x.players)setPlayers(x.players);if(x.teams)setTeams(x.teams);if(x.recent)setRecent(x.recent);if(x.unsoldList)setUnsoldList(x.unsoldList);if('currentPlayerId'in x)setCurrentPlayerId(x.currentPlayerId);if(x.spectatorEvent)setSpectatorEvent(x.spectatorEvent);if('livePrice'in x)setLivePrice(x.livePrice||0);if('liveTeamName'in x)setLiveTeamName(x.liveTeamName||'');if('liveTimer'in x)setLiveTimer(x.liveTimer)}).subscribe()})();return()=>{if(ch)supabase.removeChannel(ch)}},[roomStatus.connected,roomStatus.roomCode]);
+
   let view=<Auction players={players} setPlayers={setPlayers} teams={teams} setTeams={setTeams} settings={settings} recent={recent} setRecent={setRecent} currentPlayerId={currentPlayerId} setCurrentPlayerId={setCurrentPlayerId}
-      spectatorEvent={spectatorEvent} setSpectatorEvent={setSpectatorEvent}/>;
+      spectatorEvent={spectatorEvent} setSpectatorEvent={setSpectatorEvent} unsoldList={unsoldList} setUnsoldList={setUnsoldList} onStateChanged={onStateChanged}/>;
   if(active==='players')view=<Players players={players} setPlayers={setPlayers}/>;
   if(active==='roulette')view=<Roulette players={players} setPlayers={setPlayers} setActive={setActive} setCurrentPlayerId={setCurrentPlayerId}/>;
   if(active==='history')view=<HistoryView recent={recent}/>;
@@ -793,8 +819,9 @@ export default function Home(){
     livePrice={livePrice}
     liveTeamName={liveTeamName}
     liveTimer={liveTimer}
-    spectatorEvent={spectatorEvent}
+    spectatorEvent={spectatorEvent} unsoldList={unsoldList}
   />;
+  if(active==='presentation')view=<Presentation settings={settings} teams={teams} players={players} recent={recent} currentPlayerId={currentPlayerId} livePrice={livePrice} liveTeamName={liveTeamName} liveTimer={liveTimer} spectatorEvent={spectatorEvent} unsoldList={unsoldList}/>;
   if(active==='settings')view=<SettingsView settings={settings} setSettings={setSettings} teams={teams} setTeams={setTeams}/>;
-  return <AppShell active={active} setActive={setActive} settings={settings}>{view}</AppShell>;
+  return <AppShell active={active} setActive={setActive} settings={settings} roomStatus={roomStatus}>{view}</AppShell>;
 }
