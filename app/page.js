@@ -50,7 +50,8 @@ function AppShell({active,setActive,settings,children}) {
 
 function Auction({
   players,setPlayers,teams,setTeams,settings,recent,setRecent,
-  currentPlayerId,setCurrentPlayerId
+  currentPlayerId,setCurrentPlayerId,
+  spectatorEvent,setSpectatorEvent
 }) {
   const waiting = players.filter(p=>p.status==='waiting');
   const [selectedTeam,setSelectedTeam] = useState(null);
@@ -61,6 +62,17 @@ function Auction({
   const [overlay,setOverlay] = useState(null);
   const [spinning,setSpinning] = useState(false);
   const [rouletteName,setRouletteName] = useState('대기 중');
+
+  const pushSpectatorEvent=(event)=>{
+    const next={...event,id:Date.now()};
+    setSpectatorEvent(next);
+    try{
+      localStorage.setItem('gochubat-spectator-event',JSON.stringify(next));
+      const channel=new BroadcastChannel('gochubat-auction-live');
+      channel.postMessage({type:'spectator-event',payload:next});
+      channel.close();
+    }catch{}
+  };
 
   const current = players.find(p=>p.id===currentPlayerId);
   const roulettePool = players.filter(
@@ -87,6 +99,12 @@ function Auction({
     setPrice(0);
     setTimer(settings.timer);
     setRunning(false);
+    if(player){
+      pushSpectatorEvent({
+        type:'player-selected',
+        player:{id:player.id,name:player.name,tier:player.tier,main:player.main,sub:player.sub}
+      });
+    }
   };
 
   const spinRoulette=()=>{
@@ -94,17 +112,23 @@ function Auction({
     if(!roulettePool.length) return alert('룰렛에 남은 선수가 없습니다.');
 
     setSpinning(true);
+    pushSpectatorEvent({type:'roulette-start'});
     let tick=0;
     const totalTicks=22;
     const interval=setInterval(()=>{
       const preview=roulettePool[Math.floor(Math.random()*roulettePool.length)];
       setRouletteName(preview.name);
+      pushSpectatorEvent({type:'roulette-preview',name:preview.name});
       tick+=1;
 
       if(tick>=totalTicks){
         clearInterval(interval);
         const picked=roulettePool[Math.floor(Math.random()*roulettePool.length)];
         setRouletteName(picked.name);
+        pushSpectatorEvent({
+          type:'roulette-result',
+          player:{id:picked.id,name:picked.name,tier:picked.tier,main:picked.main,sub:picked.sub}
+        });
         selectPlayer(picked);
         setSpinning(false);
       }
@@ -117,7 +141,15 @@ function Auction({
     if(!team) return;
     if(price+n>team.points) return alert('포인트가 부족합니다.');
     snap();
-    setPrice(v=>v+n);
+    const nextPrice=price+n;
+    setPrice(nextPrice);
+    pushSpectatorEvent({
+      type:'bid',
+      price:nextPrice,
+      teamId:team.id,
+      teamName:team.name,
+      timer:settings.resetOnBid?settings.timer:timer
+    });
     if(settings.resetOnBid) setTimer(settings.timer);
   };
 
@@ -163,6 +195,7 @@ function Auction({
     };
     setRecent(r=>[sale,...r].slice(0,30));
     setOverlay({type:'sold',...sale});
+    pushSpectatorEvent({type:'sold',sale});
     selectPlayer(null);
     setRouletteName('대기 중');
     setTimeout(()=>setOverlay(null),1800);
@@ -175,6 +208,7 @@ function Auction({
       ...p,status:'unsold',excluded:true
     }:p));
     setOverlay({type:'unsold',player:current.name});
+    pushSpectatorEvent({type:'unsold',player:current.name});
     selectPlayer(null);
     setRouletteName('대기 중');
     setTimeout(()=>setOverlay(null),1300);
@@ -251,7 +285,11 @@ function Auction({
         <div className="admin-actions">
           <button className="success-btn" onClick={sold}><Trophy size={17}/> 낙찰</button>
           <button className="danger-btn" onClick={unsold}>유찰</button>
-          <button onClick={()=>setRunning(v=>!v)}>{running?'타이머 정지':'타이머 시작'}</button>
+          <button onClick={()=>{
+  const next=!running;
+  setRunning(next);
+  pushSpectatorEvent({type:next?'timer-start':'timer-stop',timer});
+}}>{running?'타이머 정지':'타이머 시작'}</button>
           <button onClick={undo}><RotateCcw size={15}/> 되돌리기</button>
         </div>
       </section>
@@ -534,17 +572,229 @@ function SettingsView({settings,setSettings,teams,setTeams}) {
 }
 
 function HistoryView({recent}) {return <section className="panel full-panel"><div className="panel-title"><div><span>AUCTION HISTORY</span><h2>최근 낙찰</h2></div><b>{recent.length}건</b></div><div className="history-list">{recent.length?recent.map((x,i)=><div className="history-row" key={x.id}><span>{String(i+1).padStart(2,'0')}</span><div><b>{x.player}</b><small>{x.time}</small></div><span>{x.team}</span><strong>{x.price}P</strong></div>):<div className="empty-state large">낙찰 기록 없음</div>}</div></section>}
-function Watch({settings,teams,players}) {const p=players.find(x=>x.status==='waiting');return <section className="panel watch-screen"><div className="watch-brand">🌶️ 고추밭 AUCTION</div><span>VIEW ONLY</span><h2>{settings.title}</h2><div className="watch-player"><small>현재 대기 선수</small><strong>{p?.name??'경매 종료'}</strong><p>{p?`${p.tier} · ${p.main}/${p.sub}`:'남은 선수 없음'}</p></div><div className="watch-teams">{teams.map(t=><div key={t.id}><b>{t.name}</b><strong>{t.points}P</strong><small>{t.roster.length}명</small></div>)}</div></section>}
+function Watch({
+  settings,teams,players,recent,currentPlayerId,
+  livePrice,liveTeamName,liveTimer,spectatorEvent
+}) {
+  const current=players.find(p=>p.id===currentPlayerId);
+  const completed=players.filter(p=>p.status!=='waiting').length;
+  const total=players.length;
+  const waiting=players.filter(p=>p.status==='waiting').length;
+
+  const [rouletteActive,setRouletteActive]=useState(false);
+  const [rouletteDisplay,setRouletteDisplay]=useState('대기 중');
+  const [resultOverlay,setResultOverlay]=useState(null);
+
+  useEffect(()=>{
+    if(!spectatorEvent) return;
+
+    if(spectatorEvent.type==='roulette-start'){
+      setRouletteActive(true);
+      setRouletteDisplay('추첨 시작');
+    }
+    if(spectatorEvent.type==='roulette-preview'){
+      setRouletteActive(true);
+      setRouletteDisplay(spectatorEvent.name);
+    }
+    if(spectatorEvent.type==='roulette-result'){
+      setRouletteActive(false);
+      setRouletteDisplay(spectatorEvent.player?.name||'결과');
+    }
+    if(spectatorEvent.type==='sold'){
+      setResultOverlay({
+        type:'sold',
+        player:spectatorEvent.sale.player,
+        team:spectatorEvent.sale.team,
+        price:spectatorEvent.sale.price
+      });
+      setTimeout(()=>setResultOverlay(null),2200);
+    }
+    if(spectatorEvent.type==='unsold'){
+      setResultOverlay({type:'unsold',player:spectatorEvent.player});
+      setTimeout(()=>setResultOverlay(null),1700);
+    }
+  },[spectatorEvent]);
+
+  return <section className="panel spectator-page">
+    {resultOverlay&&
+      <div className={`spectator-result-overlay ${resultOverlay.type}`}>
+        <div className="spectator-result-card">
+          <Sparkles size={42}/>
+          <span>{resultOverlay.type==='sold'?'AUCTION COMPLETE':'UNSOLD'}</span>
+          <h2>{resultOverlay.player}</h2>
+          <p>
+            {resultOverlay.type==='sold'
+              ?`${resultOverlay.team} · ${Number(resultOverlay.price).toLocaleString()}P 낙찰`
+              :'유찰 처리되었습니다.'}
+          </p>
+        </div>
+      </div>
+    }
+
+    <header className="spectator-header">
+      <div>
+        <div className="watch-brand">🌶️ 고추밭 AUCTION</div>
+        <h2>{settings.title}</h2>
+      </div>
+      <div className="spectator-status">
+        <span className="status-live-dot"/>
+        <b>{rouletteActive?'룰렛 진행 중':current?'입찰 진행 중':'경매 준비'}</b>
+      </div>
+      <div className="spectator-progress">
+        <span>진행률</span>
+        <b>{completed} / {total}</b>
+        <small>남은 선수 {waiting}명</small>
+      </div>
+    </header>
+
+    <div className="spectator-main-grid">
+      <section className="spectator-current-card">
+        <span className="spectator-label">CURRENT PLAYER</span>
+        <div className="spectator-player-row">
+          <div className="spectator-role-orb">{current?.main??'?'}</div>
+          <div>
+            <small>{current?.tier??'선수 없음'}</small>
+            <h3>{current?.name??'룰렛을 기다리는 중'}</h3>
+            <p>{current?`${current.main} / ${current.sub}`:'다음 선수를 추첨해주세요.'}</p>
+          </div>
+        </div>
+
+        <div className="spectator-price-grid">
+          <div>
+            <span>현재 입찰가</span>
+            <strong>{Number(livePrice||0).toLocaleString()}P</strong>
+          </div>
+          <div>
+            <span>최고 입찰팀</span>
+            <strong>{liveTeamName||'없음'}</strong>
+          </div>
+          <div>
+            <span>남은 시간</span>
+            <strong className={liveTimer<=5?'danger-time':''}>{liveTimer}초</strong>
+          </div>
+        </div>
+      </section>
+
+      <section className="spectator-roulette-card">
+        <span className="spectator-label">RANDOM ROULETTE</span>
+        <div className={rouletteActive?'spectator-wheel active':'spectator-wheel'}>
+          <Dices size={38}/>
+        </div>
+        <div className={rouletteActive?'spectator-roulette-name active':'spectator-roulette-name'}>
+          {rouletteDisplay}
+        </div>
+        <p>{rouletteActive?'선수를 추첨하고 있습니다...':'다음 룰렛을 기다리는 중'}</p>
+      </section>
+    </div>
+
+    <section className="spectator-recent-section">
+      <div className="spectator-section-title">
+        <div><span>RECENT SALES</span><h3>최근 낙찰</h3></div>
+      </div>
+      <div className="spectator-recent-list">
+        {recent.length?recent.slice(0,5).map(x=>
+          <div className="spectator-recent-row" key={x.id}>
+            <div><b>{x.player}</b><small>{x.team}</small></div>
+            <strong>{Number(x.price).toLocaleString()}P</strong>
+          </div>
+        ):<div className="watch-empty">아직 낙찰 기록이 없습니다.</div>}
+      </div>
+    </section>
+
+    <section className="spectator-rosters-section">
+      <div className="spectator-section-title">
+        <div><span>TEAM ROSTERS</span><h3>팀별 영입 현황</h3></div>
+      </div>
+      <div className="watch-rosters">
+        {teams.map(team=>
+          <article className="watch-team-card" key={team.id}>
+            <header>
+              <div>
+                <b>{team.name}</b>
+                <small>{team.roster.length}명 영입</small>
+              </div>
+              <strong>{team.points.toLocaleString()}P</strong>
+            </header>
+
+            <div className="watch-team-members">
+              {team.roster.length?team.roster.map(member=>
+                <div className="watch-member-row" key={`${team.id}-${member.id}`}>
+                  <div>
+                    <b>{member.name}</b>
+                    <small>
+                      {member.tier||''}
+                      {member.main?` · ${member.main}/${member.sub}`:''}
+                    </small>
+                  </div>
+                  <strong>{Number(member.price||0).toLocaleString()}P</strong>
+                </div>
+              ):<div className="watch-empty">영입한 선수가 없습니다.</div>}
+            </div>
+          </article>
+        )}
+      </div>
+    </section>
+
+    <p className="watch-note">
+      관전자 화면 · 입찰 및 운영 버튼은 표시되지 않습니다.
+    </p>
+  </section>;
+}
 
 export default function Home(){
-  const [active,setActive]=useState('auction'); const [settings,setSettings]=useState(DEFAULT_SETTINGS); const [players,setPlayers]=useState(DEFAULT_PLAYERS); const [teams,setTeams]=useState(makeTeams(DEFAULT_SETTINGS)); const [recent,setRecent]=useState([]); const [currentPlayerId,setCurrentPlayerId]=useState(null); const [ready,setReady]=useState(false);
+  const [active,setActive]=useState('auction');
+  const [settings,setSettings]=useState(DEFAULT_SETTINGS);
+  const [players,setPlayers]=useState(DEFAULT_PLAYERS);
+  const [teams,setTeams]=useState(makeTeams(DEFAULT_SETTINGS));
+  const [recent,setRecent]=useState([]);
+  const [currentPlayerId,setCurrentPlayerId]=useState(null);
+  const [spectatorEvent,setSpectatorEvent]=useState(null);
+  const [livePrice,setLivePrice]=useState(0);
+  const [liveTeamName,setLiveTeamName]=useState('');
+  const [liveTimer,setLiveTimer]=useState(DEFAULT_SETTINGS.timer);
+  const [ready,setReady]=useState(false);
   useEffect(()=>{try{const raw=localStorage.getItem(KEY);if(raw){const x=JSON.parse(raw);const s={...DEFAULT_SETTINGS,...x.settings};setSettings(s);setPlayers(x.players||DEFAULT_PLAYERS);setTeams(makeTeams(s,x.teams||[]));setRecent(x.recent||[]);setCurrentPlayerId(x.currentPlayerId??null);}}catch{}setReady(true)},[]);
   useEffect(()=>{if(ready)localStorage.setItem(KEY,JSON.stringify({settings,players,teams,recent,currentPlayerId}));},[ready,settings,players,teams,recent,currentPlayerId]);
-  let view=<Auction players={players} setPlayers={setPlayers} teams={teams} setTeams={setTeams} settings={settings} recent={recent} setRecent={setRecent} currentPlayerId={currentPlayerId} setCurrentPlayerId={setCurrentPlayerId}/>;
+
+  useEffect(()=>{
+    const ev=spectatorEvent;
+    if(!ev)return;
+    if(ev.type==='bid'){
+      setLivePrice(ev.price||0);
+      setLiveTeamName(ev.teamName||'');
+      setLiveTimer(ev.timer??settings.timer);
+    }
+    if(ev.type==='player-selected' || ev.type==='roulette-result'){
+      setLivePrice(0);
+      setLiveTeamName('');
+      setLiveTimer(settings.timer);
+    }
+    if(ev.type==='timer-start' || ev.type==='timer-stop'){
+      setLiveTimer(ev.timer??liveTimer);
+    }
+    if(ev.type==='sold' || ev.type==='unsold'){
+      setLivePrice(0);
+      setLiveTeamName('');
+      setLiveTimer(settings.timer);
+    }
+  },[spectatorEvent,settings.timer]);
+
+  let view=<Auction players={players} setPlayers={setPlayers} teams={teams} setTeams={setTeams} settings={settings} recent={recent} setRecent={setRecent} currentPlayerId={currentPlayerId} setCurrentPlayerId={setCurrentPlayerId}
+      spectatorEvent={spectatorEvent} setSpectatorEvent={setSpectatorEvent}/>;
   if(active==='players')view=<Players players={players} setPlayers={setPlayers}/>;
   if(active==='roulette')view=<Roulette players={players} setPlayers={setPlayers} setActive={setActive} setCurrentPlayerId={setCurrentPlayerId}/>;
   if(active==='history')view=<HistoryView recent={recent}/>;
-  if(active==='watch')view=<Watch settings={settings} teams={teams} players={players}/>;
+  if(active==='watch')view=<Watch
+    settings={settings}
+    teams={teams}
+    players={players}
+    recent={recent}
+    currentPlayerId={currentPlayerId}
+    livePrice={livePrice}
+    liveTeamName={liveTeamName}
+    liveTimer={liveTimer}
+    spectatorEvent={spectatorEvent}
+  />;
   if(active==='settings')view=<SettingsView settings={settings} setSettings={setSettings} teams={teams} setTeams={setTeams}/>;
   return <AppShell active={active} setActive={setActive} settings={settings}>{view}</AppShell>;
 }
