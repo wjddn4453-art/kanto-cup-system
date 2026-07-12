@@ -48,57 +48,278 @@ function AppShell({active,setActive,settings,children}) {
   </main>;
 }
 
-function Auction({players,setPlayers,teams,setTeams,settings,recent,setRecent}) {
+function Auction({
+  players,setPlayers,teams,setTeams,settings,recent,setRecent,
+  currentPlayerId,setCurrentPlayerId
+}) {
   const waiting = players.filter(p=>p.status==='waiting');
-  const [currentId,setCurrentId] = useState(waiting[0]?.id ?? null);
   const [selectedTeam,setSelectedTeam] = useState(null);
   const [price,setPrice] = useState(0);
   const [timer,setTimer] = useState(settings.timer);
   const [running,setRunning] = useState(false);
   const [stack,setStack] = useState([]);
   const [overlay,setOverlay] = useState(null);
-  const current = players.find(p=>p.id===currentId);
+  const [spinning,setSpinning] = useState(false);
+  const [rouletteName,setRouletteName] = useState('대기 중');
+
+  const current = players.find(p=>p.id===currentPlayerId);
+  const roulettePool = players.filter(
+    p=>p.status==='waiting' && !p.excluded && p.id!==currentPlayerId
+  );
 
   useEffect(()=>setTimer(settings.timer),[settings.timer]);
-  useEffect(()=>{ if(!running || timer<=0) return; const id=setTimeout(()=>setTimer(v=>v-1),1000); return()=>clearTimeout(id); },[running,timer]);
-  useEffect(()=>{ if(!current && waiting.length) setCurrentId(waiting[0].id); },[waiting.length]);
+  useEffect(()=>{
+    if(!running || timer<=0) return;
+    const id=setTimeout(()=>setTimer(v=>v-1),1000);
+    return()=>clearTimeout(id);
+  },[running,timer]);
 
-  const snap=()=>setStack(s=>[...s.slice(-39),JSON.stringify({players,teams,recent,currentId,selectedTeam,price,timer})]);
-  const bid=(n)=>{
-    if(!current || selectedTeam===null) return alert('선수와 팀을 먼저 선택하세요.');
-    const team=teams.find(t=>t.id===selectedTeam); if(price+n>team.points) return alert('포인트가 부족합니다.');
-    snap(); setPrice(v=>v+n); if(settings.resetOnBid) setTimer(settings.timer);
+  const snap=()=>setStack(s=>[
+    ...s.slice(-39),
+    JSON.stringify({
+      players,teams,recent,currentPlayerId,selectedTeam,price,timer
+    })
+  ]);
+
+  const selectPlayer=(player)=>{
+    setCurrentPlayerId(player?.id ?? null);
+    setSelectedTeam(null);
+    setPrice(0);
+    setTimer(settings.timer);
+    setRunning(false);
   };
-  const resetRound=()=>{setSelectedTeam(null);setPrice(0);setTimer(settings.timer);setRunning(false)};
-  const nextId=(exclude)=>players.find(p=>p.status==='waiting'&&p.id!==exclude)?.id??null;
+
+  const spinRoulette=()=>{
+    if(spinning) return;
+    if(!roulettePool.length) return alert('룰렛에 남은 선수가 없습니다.');
+
+    setSpinning(true);
+    let tick=0;
+    const totalTicks=22;
+    const interval=setInterval(()=>{
+      const preview=roulettePool[Math.floor(Math.random()*roulettePool.length)];
+      setRouletteName(preview.name);
+      tick+=1;
+
+      if(tick>=totalTicks){
+        clearInterval(interval);
+        const picked=roulettePool[Math.floor(Math.random()*roulettePool.length)];
+        setRouletteName(picked.name);
+        selectPlayer(picked);
+        setSpinning(false);
+      }
+    },75);
+  };
+
+  const bid=(n)=>{
+    if(!current || selectedTeam===null) return alert('룰렛으로 선수와 입찰 팀을 먼저 선택하세요.');
+    const team=teams.find(t=>t.id===selectedTeam);
+    if(!team) return;
+    if(price+n>team.points) return alert('포인트가 부족합니다.');
+    snap();
+    setPrice(v=>v+n);
+    if(settings.resetOnBid) setTimer(settings.timer);
+  };
+
+  const resetRound=()=>{
+    setSelectedTeam(null);
+    setPrice(0);
+    setTimer(settings.timer);
+    setRunning(false);
+  };
+
   const sold=()=>{
     if(!current||selectedTeam===null) return alert('선수와 낙찰 팀을 확인하세요.');
-    const team=teams.find(t=>t.id===selectedTeam); snap();
-    setTeams(ts=>ts.map(t=>t.id===team.id?{...t,points:t.points-price,roster:[...t.roster,{id:current.id,name:current.name,price}]}:t));
-    setPlayers(ps=>ps.map(p=>p.id===current.id?{...p,status:'sold',excluded:true}:p));
-    const sale={id:Date.now(),player:current.name,team:team.name,price,time:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})};
-    setRecent(r=>[sale,...r].slice(0,30)); setOverlay({type:'sold',...sale}); setCurrentId(nextId(current.id)); resetRound(); setTimeout(()=>setOverlay(null),1800);
-  };
-  const unsold=()=>{
-    if(!current) return; snap(); setPlayers(ps=>ps.map(p=>p.id===current.id?{...p,status:'unsold',excluded:true}:p));
-    setOverlay({type:'unsold',player:current.name}); setCurrentId(nextId(current.id)); resetRound(); setTimeout(()=>setOverlay(null),1300);
-  };
-  const undo=()=>{const raw=stack.at(-1); if(!raw)return; const x=JSON.parse(raw); setPlayers(x.players);setTeams(x.teams);setRecent(x.recent);setCurrentId(x.currentId);setSelectedTeam(x.selectedTeam);setPrice(x.price);setTimer(x.timer);setRunning(false);setStack(s=>s.slice(0,-1));};
+    const team=teams.find(t=>t.id===selectedTeam);
+    if(!team) return;
+    snap();
 
-  return <>{overlay&&<div className={`result-overlay ${overlay.type}`}><div className="result-card"><Sparkles size={34}/><span>{overlay.type==='sold'?'AUCTION COMPLETE':'UNSOLD'}</span><h2>{overlay.player}</h2><p>{overlay.type==='sold'?`${overlay.team} · ${overlay.price}P 낙찰`:'유찰 처리'}</p></div></div>}
+    setTeams(ts=>ts.map(t=>t.id===team.id?{
+      ...t,
+      points:t.points-price,
+      roster:[
+        ...t.roster,
+        {
+          id:current.id,
+          name:current.name,
+          tier:current.tier,
+          main:current.main,
+          sub:current.sub,
+          price
+        }
+      ]
+    }:t));
+
+    setPlayers(ps=>ps.map(p=>p.id===current.id?{
+      ...p,status:'sold',excluded:true,soldTeamId:team.id,soldPrice:price
+    }:p));
+
+    const sale={
+      id:Date.now(),
+      player:current.name,
+      team:team.name,
+      price,
+      time:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})
+    };
+    setRecent(r=>[sale,...r].slice(0,30));
+    setOverlay({type:'sold',...sale});
+    selectPlayer(null);
+    setRouletteName('대기 중');
+    setTimeout(()=>setOverlay(null),1800);
+  };
+
+  const unsold=()=>{
+    if(!current) return;
+    snap();
+    setPlayers(ps=>ps.map(p=>p.id===current.id?{
+      ...p,status:'unsold',excluded:true
+    }:p));
+    setOverlay({type:'unsold',player:current.name});
+    selectPlayer(null);
+    setRouletteName('대기 중');
+    setTimeout(()=>setOverlay(null),1300);
+  };
+
+  const undo=()=>{
+    const raw=stack.at(-1);
+    if(!raw) return;
+    const x=JSON.parse(raw);
+    setPlayers(x.players);
+    setTeams(x.teams);
+    setRecent(x.recent);
+    setCurrentPlayerId(x.currentPlayerId);
+    setSelectedTeam(x.selectedTeam);
+    setPrice(x.price);
+    setTimer(x.timer);
+    setRunning(false);
+    setStack(s=>s.slice(0,-1));
+  };
+
+  return <>{overlay&&
+    <div className={`result-overlay ${overlay.type}`}>
+      <div className="result-card">
+        <Sparkles size={34}/>
+        <span>{overlay.type==='sold'?'AUCTION COMPLETE':'UNSOLD'}</span>
+        <h2>{overlay.player}</h2>
+        <p>{overlay.type==='sold'?`${overlay.team} · ${overlay.price}P 낙찰`:'유찰 처리'}</p>
+      </div>
+    </div>
+  }
     <div className="page-grid">
       <section className="panel auction-stage">
-        <div className="panel-title"><div><span>LIVE AUCTION</span><h2>현재 경매 선수</h2></div><b>남은 선수 {waiting.length}명</b></div>
-        <div className="player-focus"><div className="role-orb">{current?.main??'?'}</div><div className="player-copy"><span className="tier-tag">{current?.tier??'선수 없음'}</span><h3>{current?.name??'룰렛을 돌려주세요'}</h3><p>{current?`${current.main} / ${current.sub}`:'남은 선수를 추첨하세요.'}</p></div><div className={timer<=5?'timer-ring danger':'timer-ring'}><Clock3 size={18}/><strong>{timer}</strong><small>SEC</small></div></div>
-        <div className="price-board"><span>현재 입찰가</span><strong>{price.toLocaleString()} P</strong><p>현재 입찰팀: {selectedTeam?teams.find(t=>t.id===selectedTeam)?.name:'없음'}</p></div>
-        <div className="team-bids dynamic">{teams.map(t=><button key={t.id} className={selectedTeam===t.id?'team-bid selected':'team-bid'} onClick={()=>setSelectedTeam(t.id)}><span>{t.name}</span><b>{t.points.toLocaleString()} P</b><small>{t.roster.length}명 영입</small></button>)}</div>
-        <div className="bid-actions dynamic">{settings.bidSteps.map(n=><button key={n} onClick={()=>bid(n)}>+{n}</button>)}</div>
-        <div className="admin-actions"><button className="success-btn" onClick={sold}><Trophy size={17}/> 낙찰</button><button className="danger-btn" onClick={unsold}>유찰</button><button onClick={()=>setRunning(v=>!v)}>{running?'타이머 정지':'타이머 시작'}</button><button onClick={undo}><RotateCcw size={15}/> 되돌리기</button></div>
+        <div className="panel-title">
+          <div><span>LIVE AUCTION</span><h2>현재 경매 선수</h2></div>
+          <b>남은 선수 {waiting.length}명</b>
+        </div>
+
+        <div className="player-focus">
+          <div className="role-orb">{current?.main??'?'}</div>
+          <div className="player-copy">
+            <span className="tier-tag">{current?.tier??'선수 없음'}</span>
+            <h3>{current?.name??'룰렛을 돌려주세요'}</h3>
+            <p>{current?`${current.main} / ${current.sub}`:'오른쪽 룰렛에서 다음 선수를 추첨하세요.'}</p>
+          </div>
+          <div className={timer<=5?'timer-ring danger':'timer-ring'}>
+            <Clock3 size={18}/><strong>{timer}</strong><small>SEC</small>
+          </div>
+        </div>
+
+        <div className="price-board">
+          <span>현재 입찰가</span>
+          <strong>{price.toLocaleString()} P</strong>
+          <p>현재 입찰팀: {selectedTeam?teams.find(t=>t.id===selectedTeam)?.name:'없음'}</p>
+        </div>
+
+        <div className="team-bids dynamic">
+          {teams.map(t=>
+            <button
+              key={t.id}
+              className={selectedTeam===t.id?'team-bid selected':'team-bid'}
+              onClick={()=>setSelectedTeam(t.id)}
+            >
+              <span>{t.name}</span>
+              <b>{t.points.toLocaleString()} P</b>
+              <small>{t.roster.length}명 영입</small>
+            </button>
+          )}
+        </div>
+
+        <div className="bid-actions dynamic">
+          {settings.bidSteps.map(n=><button key={n} onClick={()=>bid(n)}>+{n}</button>)}
+        </div>
+
+        <div className="admin-actions">
+          <button className="success-btn" onClick={sold}><Trophy size={17}/> 낙찰</button>
+          <button className="danger-btn" onClick={unsold}>유찰</button>
+          <button onClick={()=>setRunning(v=>!v)}>{running?'타이머 정지':'타이머 시작'}</button>
+          <button onClick={undo}><RotateCcw size={15}/> 되돌리기</button>
+        </div>
       </section>
+
       <aside className="right-stack">
-        <section className="panel"><div className="panel-title compact"><div><span>NEXT PICK</span><h2>다음 선수 추첨</h2></div><b>{waiting.length}명</b></div><div className="next-pick-box"><Dices size={36}/><h3>룰렛 방식</h3><p>경매가 끝날 때마다 다시 무작위 추첨합니다.</p></div></section>
-        <section className="panel"><div className="panel-title compact"><div><span>RECENT SALES</span><h2>최근 낙찰</h2></div></div><div className="recent-list">{recent.length?recent.slice(0,5).map(x=><div className="recent-row" key={x.id}><div><b>{x.player}</b><small>{x.team}</small></div><strong>{x.price}P</strong></div>):<div className="empty-state">낙찰 기록 없음</div>}</div></section>
-        <section className="panel"><div className="panel-title compact"><div><span>TEAM STATUS</span><h2>팀 현황</h2></div></div><div className="mini-teams">{teams.map(t=><div className="mini-team" key={t.id}><div><b>{t.name}</b><small>{t.roster.length}명 영입</small></div><strong>{t.points.toLocaleString()}P</strong></div>)}</div></section>
+        <section className="panel">
+          <div className="panel-title compact">
+            <div><span>RANDOM PICK</span><h2>랜덤 룰렛</h2></div>
+            <b>{roulettePool.length}명 추첨 가능</b>
+          </div>
+          <div className="inline-roulette">
+            <div className={spinning?'mini-wheel spinning':'mini-wheel'}>
+              <Dices size={32}/>
+            </div>
+            <div className={spinning?'roulette-current spinning-text':'roulette-current'}>
+              {rouletteName}
+            </div>
+            <p>낙찰·유찰 선수와 현재 경매 선수는 자동 제외됩니다.</p>
+            <button className="primary-btn" onClick={spinRoulette} disabled={spinning||!roulettePool.length}>
+              {spinning?'추첨 중...':'룰렛 돌리기'}
+            </button>
+          </div>
+        </section>
+
+        <section className="panel">
+          <div className="panel-title compact">
+            <div><span>RECENT SALES</span><h2>최근 낙찰</h2></div>
+          </div>
+          <div className="recent-list">
+            {recent.length?recent.slice(0,5).map(x=>
+              <div className="recent-row" key={x.id}>
+                <div><b>{x.player}</b><small>{x.team}</small></div>
+                <strong>{x.price}P</strong>
+              </div>
+            ):<div className="empty-state">낙찰 기록 없음</div>}
+          </div>
+        </section>
+
+        <section className="panel team-rosters-panel">
+          <div className="panel-title compact">
+            <div><span>TEAM ROSTERS</span><h2>팀별 영입 명단</h2></div>
+          </div>
+          <div className="team-roster-list">
+            {teams.map(t=>
+              <details className="team-roster-card" key={t.id} open={t.roster.length>0}>
+                <summary>
+                  <div>
+                    <b>{t.name}</b>
+                    <small>{t.roster.length}명 영입</small>
+                  </div>
+                  <strong>{t.points.toLocaleString()}P</strong>
+                </summary>
+
+                <div className="roster-members">
+                  {t.roster.length?t.roster.map(member=>
+                    <div className="roster-member" key={`${t.id}-${member.id}`}>
+                      <div>
+                        <b>{member.name}</b>
+                        <small>{member.tier||''}{member.main?` · ${member.main}/${member.sub}`:''}</small>
+                      </div>
+                      <strong>{Number(member.price||0).toLocaleString()}P</strong>
+                    </div>
+                  ):<div className="empty-roster">아직 영입한 선수가 없습니다.</div>}
+                </div>
+              </details>
+            )}
+          </div>
+        </section>
       </aside>
     </div>
   </>;
@@ -113,12 +334,52 @@ function Players({players,setPlayers}) {
   </section>;
 }
 
-function Roulette({players,setPlayers,setActive}) {
-  const [picked,setPicked]=useState(null); const [spinning,setSpinning]=useState(false);
+function Roulette({players,setPlayers,setActive,setCurrentPlayerId}) {
+  const [picked,setPicked]=useState(null);
+  const [spinning,setSpinning]=useState(false);
   const eligible=useMemo(()=>players.filter(p=>p.status==='waiting'&&!p.excluded),[players]);
-  const spin=()=>{if(!eligible.length||spinning)return;setSpinning(true);setPicked(null);setTimeout(()=>{setPicked(eligible[Math.floor(Math.random()*eligible.length)]);setSpinning(false);},2000);};
-  return <div className="roulette-layout"><section className="panel wheel-panel"><div className="panel-title"><div><span>RANDOM PICK</span><h2>랜덤 룰렛</h2></div></div><div className={spinning?'wheel spinning':'wheel'}><div className="wheel-center"><Dices size={34}/></div></div><div className="picked-name">{spinning?'추첨 중...':picked?.name??'대기 중'}</div><button className="primary-btn large" onClick={spin}>룰렛 돌리기</button></section>
-    <section className="panel"><div className="panel-title compact"><div><span>ENTRY LIST</span><h2>룰렛 명단</h2></div><b>{eligible.length}명 참가</b></div><div className="roulette-list">{players.map(p=>{const off=p.excluded||p.status!=='waiting';return <button key={p.id} className={off?'roulette-entry excluded':'roulette-entry'} onClick={()=>p.status==='waiting'&&setPlayers(ps=>ps.map(x=>x.id===p.id?{...x,excluded:!x.excluded}:x))}><div><b>{p.name}</b><small>{p.tier} · {p.main}</small></div><span>{p.status!=='waiting'?'경매 완료':p.excluded?'제외됨':'참가'}</span></button>})}</div></section>
+
+  const spin=()=>{
+    if(!eligible.length||spinning)return;
+    setSpinning(true);
+    setPicked(null);
+    setTimeout(()=>{
+      const selected=eligible[Math.floor(Math.random()*eligible.length)];
+      setPicked(selected);
+      setCurrentPlayerId(selected.id);
+      setSpinning(false);
+    },2000);
+  };
+
+  return <div className="roulette-layout">
+    <section className="panel wheel-panel">
+      <div className="panel-title"><div><span>RANDOM PICK</span><h2>랜덤 룰렛</h2></div></div>
+      <div className={spinning?'wheel spinning':'wheel'}><div className="wheel-center"><Dices size={34}/></div></div>
+      <div className="picked-name">{spinning?'추첨 중...':picked?.name??'대기 중'}</div>
+      <div className="roulette-buttons">
+        <button className="primary-btn large" onClick={spin}>룰렛 돌리기</button>
+        <button disabled={!picked} onClick={()=>setActive('auction')}>경매 화면으로 이동</button>
+      </div>
+    </section>
+
+    <section className="panel">
+      <div className="panel-title compact">
+        <div><span>ENTRY LIST</span><h2>룰렛 명단</h2></div><b>{eligible.length}명 참가</b>
+      </div>
+      <div className="roulette-list">
+        {players.map(p=>{
+          const off=p.excluded||p.status!=='waiting';
+          return <button
+            key={p.id}
+            className={off?'roulette-entry excluded':'roulette-entry'}
+            onClick={()=>p.status==='waiting'&&setPlayers(ps=>ps.map(x=>x.id===p.id?{...x,excluded:!x.excluded}:x))}
+          >
+            <div><b>{p.name}</b><small>{p.tier} · {p.main}</small></div>
+            <span>{p.status!=='waiting'?'경매 완료':p.excluded?'제외됨':'참가'}</span>
+          </button>
+        })}
+      </div>
+    </section>
   </div>;
 }
 
@@ -276,12 +537,12 @@ function HistoryView({recent}) {return <section className="panel full-panel"><di
 function Watch({settings,teams,players}) {const p=players.find(x=>x.status==='waiting');return <section className="panel watch-screen"><div className="watch-brand">🌶️ 고추밭 AUCTION</div><span>VIEW ONLY</span><h2>{settings.title}</h2><div className="watch-player"><small>현재 대기 선수</small><strong>{p?.name??'경매 종료'}</strong><p>{p?`${p.tier} · ${p.main}/${p.sub}`:'남은 선수 없음'}</p></div><div className="watch-teams">{teams.map(t=><div key={t.id}><b>{t.name}</b><strong>{t.points}P</strong><small>{t.roster.length}명</small></div>)}</div></section>}
 
 export default function Home(){
-  const [active,setActive]=useState('auction'); const [settings,setSettings]=useState(DEFAULT_SETTINGS); const [players,setPlayers]=useState(DEFAULT_PLAYERS); const [teams,setTeams]=useState(makeTeams(DEFAULT_SETTINGS)); const [recent,setRecent]=useState([]); const [ready,setReady]=useState(false);
-  useEffect(()=>{try{const raw=localStorage.getItem(KEY);if(raw){const x=JSON.parse(raw);const s={...DEFAULT_SETTINGS,...x.settings};setSettings(s);setPlayers(x.players||DEFAULT_PLAYERS);setTeams(makeTeams(s,x.teams||[]));setRecent(x.recent||[]);}}catch{}setReady(true)},[]);
-  useEffect(()=>{if(ready)localStorage.setItem(KEY,JSON.stringify({settings,players,teams,recent}));},[ready,settings,players,teams,recent]);
-  let view=<Auction players={players} setPlayers={setPlayers} teams={teams} setTeams={setTeams} settings={settings} recent={recent} setRecent={setRecent}/>;
+  const [active,setActive]=useState('auction'); const [settings,setSettings]=useState(DEFAULT_SETTINGS); const [players,setPlayers]=useState(DEFAULT_PLAYERS); const [teams,setTeams]=useState(makeTeams(DEFAULT_SETTINGS)); const [recent,setRecent]=useState([]); const [currentPlayerId,setCurrentPlayerId]=useState(null); const [ready,setReady]=useState(false);
+  useEffect(()=>{try{const raw=localStorage.getItem(KEY);if(raw){const x=JSON.parse(raw);const s={...DEFAULT_SETTINGS,...x.settings};setSettings(s);setPlayers(x.players||DEFAULT_PLAYERS);setTeams(makeTeams(s,x.teams||[]));setRecent(x.recent||[]);setCurrentPlayerId(x.currentPlayerId??null);}}catch{}setReady(true)},[]);
+  useEffect(()=>{if(ready)localStorage.setItem(KEY,JSON.stringify({settings,players,teams,recent,currentPlayerId}));},[ready,settings,players,teams,recent,currentPlayerId]);
+  let view=<Auction players={players} setPlayers={setPlayers} teams={teams} setTeams={setTeams} settings={settings} recent={recent} setRecent={setRecent} currentPlayerId={currentPlayerId} setCurrentPlayerId={setCurrentPlayerId}/>;
   if(active==='players')view=<Players players={players} setPlayers={setPlayers}/>;
-  if(active==='roulette')view=<Roulette players={players} setPlayers={setPlayers} setActive={setActive}/>;
+  if(active==='roulette')view=<Roulette players={players} setPlayers={setPlayers} setActive={setActive} setCurrentPlayerId={setCurrentPlayerId}/>;
   if(active==='history')view=<HistoryView recent={recent}/>;
   if(active==='watch')view=<Watch settings={settings} teams={teams} players={players}/>;
   if(active==='settings')view=<SettingsView settings={settings} setSettings={setSettings} teams={teams} setTeams={setTeams}/>;

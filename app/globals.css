@@ -724,3 +724,150 @@ input:focus, select:focus { border-color: #2da9ff; }
     grid-column:2;
   }
 }
+
+
+/* v0.2.2 integrated roulette + roster details */
+.inline-roulette{
+  min-height:245px;
+  padding:22px;
+  display:grid;
+  place-items:center;
+  align-content:center;
+  text-align:center;
+}
+
+.mini-wheel{
+  width:74px;
+  height:74px;
+  border-radius:50%;
+  display:grid;
+  place-items:center;
+  color:#bce8ff;
+  border:4px solid #2399eb;
+  background:
+    radial-gradient(circle at 35% 25%,#1e6296,#071625 70%);
+  box-shadow:0 0 0 5px rgba(11,67,116,.55),0 0 24px rgba(38,156,242,.2);
+}
+
+.roulette-current{
+  min-height:42px;
+  margin-top:15px;
+  color:var(--gold);
+  font-size:30px;
+  font-weight:1000;
+  letter-spacing:-1px;
+}
+
+.spinning-text{
+  animation:nameFlicker .15s infinite alternate;
+}
+
+@keyframes nameFlicker{
+  from{opacity:.55;transform:scale(.97)}
+  to{opacity:1;transform:scale(1.03)}
+}
+
+.inline-roulette p{
+  margin:0 0 14px;
+  color:var(--muted);
+  font-size:10px;
+  max-width:280px;
+}
+
+.inline-roulette button:disabled{
+  opacity:.45;
+  cursor:not-allowed;
+}
+
+.team-rosters-panel{
+  max-height:520px;
+}
+
+.team-roster-list{
+  padding:8px;
+  max-height:452px;
+  overflow:auto;
+}
+
+.team-roster-card{
+  margin-bottom:7px;
+  border:1px solid rgba(66,145,207,.18);
+  border-radius:10px;
+  background:rgba(7,18,32,.64);
+  overflow:hidden;
+}
+
+.team-roster-card summary{
+  min-height:55px;
+  padding:10px 12px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  cursor:pointer;
+  list-style:none;
+}
+
+.team-roster-card summary::-webkit-details-marker{
+  display:none;
+}
+
+.team-roster-card summary div b,
+.team-roster-card summary div small{
+  display:block;
+}
+
+.team-roster-card summary div small{
+  margin-top:2px;
+  color:var(--muted);
+  font-size:9px;
+}
+
+.team-roster-card summary>strong{
+  color:var(--gold);
+  font-size:13px;
+}
+
+.roster-members{
+  padding:0 9px 9px;
+}
+
+.roster-member{
+  min-height:48px;
+  padding:8px 9px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  border-top:1px solid rgba(65,123,171,.12);
+  background:rgba(14,34,57,.52);
+}
+
+.roster-member b,
+.roster-member small{
+  display:block;
+}
+
+.roster-member small{
+  margin-top:2px;
+  color:#7890a8;
+  font-size:9px;
+}
+
+.roster-member>strong{
+  color:#ffd15a;
+  font-size:12px;
+}
+
+.empty-roster{
+  padding:13px 9px;
+  border-top:1px solid rgba(65,123,171,.12);
+  color:var(--muted);
+  font-size:9px;
+  text-align:center;
+}
+
+@media(max-width:800px){
+  .team-rosters-panel{max-height:none}
+  .team-roster-list{max-height:none}
+}
