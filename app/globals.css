@@ -2538,3 +2538,201 @@ body,button,input,select{font-family:var(--font-ui)!important}
   .arena-roulette-control.dual.inline-control{max-width:520px;margin:auto}
   .page-switch-title{align-items:flex-start!important;flex-direction:column!important}
 }
+
+
+/* =========================================================
+   v2.2.1 precise title + card corrections
+   ========================================================= */
+
+/* Header title positioning */
+.single-topbar{
+  min-height:106px!important;
+  display:grid!important;
+  grid-template-columns:minmax(340px,1fr) auto minmax(340px,1fr)!important;
+  align-items:center!important;
+  padding:14px 28px!important;
+}
+
+.single-brand{
+  grid-column:2!important;
+  justify-self:center!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:12px!important;
+  min-width:max-content!important;
+  transform:none!important;
+}
+
+.single-brand>div:last-child{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  min-height:62px!important;
+}
+
+.single-brand small{
+  display:block!important;
+  margin:0 0 8px!important;
+  line-height:1!important;
+  transform:none!important;
+  position:static!important;
+}
+
+.single-brand h1{
+  margin:0!important;
+  line-height:1!important;
+  transform:none!important;
+  position:static!important;
+  top:auto!important;
+  left:auto!important;
+  font-size:32px!important;
+  letter-spacing:-1.5px!important;
+  white-space:nowrap!important;
+}
+
+/* Player cards */
+.arena-player-card{
+  min-height:255px!important;
+}
+
+.card-topline{
+  height:40px!important;
+  padding:0 12px!important;
+  font-weight:1000!important;
+}
+
+.card-topline span{
+  color:#fff!important;
+  font-size:13px!important;
+  font-weight:1000!important;
+}
+
+.card-topline b{
+  color:#ffe07b!important;
+  font-size:13px!important;
+  font-weight:1000!important;
+  letter-spacing:.15px!important;
+}
+
+.card-portrait{
+  height:215px!important;
+  position:relative!important;
+}
+
+.card-portrait::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background:
+    linear-gradient(180deg,transparent 28%,rgba(5,8,17,.12) 57%,rgba(5,8,17,.76) 100%);
+}
+
+.card-center-name{
+  position:absolute!important;
+  z-index:5!important;
+  left:12px!important;
+  right:12px!important;
+  top:54%!important;
+  transform:translateY(-50%)!important;
+  text-align:center!important;
+  color:#fff!important;
+  font-size:32px!important;
+  font-weight:1000!important;
+  line-height:1!important;
+  letter-spacing:-1.3px!important;
+  text-shadow:
+    0 3px 10px rgba(0,0,0,.98),
+    0 0 18px rgba(255,255,255,.09)!important;
+}
+
+/* Remove lower point block entirely */
+.card-base-point,
+.card-info-stack,
+.card-name,
+.card-role{
+  display:none!important;
+}
+
+/* Completed badge emphasis */
+.card-stamp.sold-stamp{
+  top:50px!important;
+  right:8px!important;
+  min-width:104px!important;
+  padding:10px 12px!important;
+  border:2px solid rgba(255,230,133,.88)!important;
+  border-radius:9px!important;
+  background:
+    linear-gradient(180deg,rgba(83,66,15,.97),rgba(30,22,5,.99))!important;
+  box-shadow:
+    0 0 0 2px rgba(255,221,95,.13),
+    0 0 25px rgba(255,217,80,.34),
+    inset 0 0 18px rgba(255,240,167,.08)!important;
+  transform:none!important;
+}
+
+.card-stamp.sold-stamp strong{
+  display:block!important;
+  color:#fff0a0!important;
+  font-size:14px!important;
+  font-weight:1000!important;
+  line-height:1.05!important;
+}
+
+.card-stamp.sold-stamp span{
+  display:block!important;
+  margin-top:6px!important;
+  color:#fff!important;
+  font-size:11px!important;
+  font-weight:1000!important;
+  line-height:1.05!important;
+}
+
+.card-stamp.unsold-stamp{
+  top:50px!important;
+  left:50%!important;
+  right:auto!important;
+  transform:translateX(-50%)!important;
+  min-width:92px!important;
+  padding:10px 12px!important;
+  border:2px solid rgba(255,112,137,.82)!important;
+  background:
+    linear-gradient(180deg,rgba(108,27,47,.97),rgba(40,9,18,.99))!important;
+  box-shadow:0 0 24px rgba(255,86,118,.28)!important;
+}
+
+.card-stamp.unsold-stamp strong{
+  color:#ffd0d8!important;
+  font-size:14px!important;
+}
+
+.picked-crown{
+  top:50px!important;
+  padding:7px 12px!important;
+  font-size:10px!important;
+  font-weight:1000!important;
+  border-width:2px!important;
+  box-shadow:0 0 22px rgba(255,226,105,.26)!important;
+}
+
+@media(max-width:900px){
+  .single-topbar{
+    grid-template-columns:1fr!important;
+  }
+
+  .single-brand{
+    grid-column:1!important;
+  }
+}
+
+@media(max-width:650px){
+  .single-brand h1{
+    font-size:25px!important;
+    white-space:normal!important;
+  }
+
+  .card-center-name{
+    font-size:27px!important;
+  }
+}

@@ -264,15 +264,35 @@ function Auction({
     const roleText=`${player.main}${player.sub&&player.sub!=='없음'?` / ${player.sub}`:''}`;
 
     return <button
-      className={['arena-player-card',active?'picked':'',sold?'completed':'',unsold?'unsold':'',spinning&&active?'roulette-flash':''].join(' ')}
+      className={[
+        'arena-player-card',
+        active?'picked':'',
+        sold?'completed':'',
+        unsold?'unsold':'',
+        spinning&&active?'roulette-flash':''
+      ].join(' ')}
       onClick={()=>['waiting','unsold'].includes(player.status)&&choosePlayer(player,true)}
     >
-      <div className="card-topline"><span>{player.tier}</span><b>{roleText}</b></div>
-      <div className="card-portrait"><PlayerPortrait player={player}/></div>
+      <div className="card-topline">
+        <span>{player.tier}</span>
+        <b>{roleText}</b>
+      </div>
+
+      <div className="card-portrait">
+        <PlayerPortrait player={player}/>
+      </div>
+
       <div className="card-center-name">{player.name}</div>
-      <div className="card-base-point">{Number(player.basePoint??100).toLocaleString()}P</div>
-      {sold&&<div className="card-stamp"><strong>선택 완료</strong><span>{team?.name} · {Number(player.soldPrice||0).toLocaleString()}P</span></div>}
-      {unsold&&<div className="card-stamp unsold-stamp"><strong>유찰</strong></div>}
+
+      {sold&&<div className="card-stamp sold-stamp">
+        <strong>선택 완료</strong>
+        <span>{team?.name} · {Number(player.soldPrice||0).toLocaleString()}P</span>
+      </div>}
+
+      {unsold&&<div className="card-stamp unsold-stamp">
+        <strong>유찰</strong>
+      </div>}
+
       {active&&player.status==='waiting'&&<div className="picked-crown">NEXT PICK</div>}
     </button>;
   };
@@ -396,7 +416,7 @@ function Auction({
             <div className="focus-card-rank">{current?.tier}</div>
             <div className="focus-card-image"><PlayerPortrait player={current}/></div>
             <h2>{current?.name}</h2>
-            <p>{current?.main} / {current?.sub&&current.sub!=='없음'?current.sub:'없음'}</p><b className="focus-base-point">{Number(current?.basePoint??100).toLocaleString()}P</b>
+            <p>{current?.main} / {current?.sub&&current.sub!=='없음'?current.sub:'없음'}</p>
           </div>
           <div className="focus-price">0 P</div>
           <small>선수를 영입할 팀을 클릭하세요.</small>
