@@ -32,6 +32,18 @@ function makeTeams(settings, old = []) {
   }));
 }
 
+
+function TournamentTitle({title='제3회 관동지방컵'}) {
+  const match = String(title).match(/^(제)(\d+)(회)(.*)$/);
+  if (!match) return <span className="tournament-title-text">{title}</span>;
+  return <span className="tournament-title-text" aria-label={title}>
+    <span className="title-prefix">{match[1]}</span>
+    <span className="title-number">{match[2]}</span>
+    <span className="title-suffix">{match[3]}</span>
+    <span className="title-name">{match[4]}</span>
+  </span>;
+}
+
 function AppShell({active,setActive,settings,children}) {
   const menu = [
     ['auction','경매 화면'],
@@ -44,7 +56,7 @@ function AppShell({active,setActive,settings,children}) {
     <header className="single-topbar">
       <div className="single-brand">
         <div className="single-ball"><span>G</span></div>
-        <div><small>GOCHUBAT MONSTER DRAFT</small><h1>{settings.title}</h1></div>
+        <div><small>GOCHUBAT MONSTER DRAFT</small><h1><TournamentTitle title={settings.title}/></h1></div>
       </div>
       <nav className="single-nav">
         {menu.map(([id,label])=><button key={id} className={active===id?'active':''} onClick={()=>setActive(id)}>{label}</button>)}
@@ -320,16 +332,18 @@ function Auction({
         <strong className="premium-name">{player.name}</strong>
       </div>
 
-      {sold&&<div className="card-stamp sold-stamp">
-        <strong>선택 완료</strong>
-        <span>{team?.name} · {Number(player.soldPrice||0).toLocaleString()}P</span>
-      </div>}
+      <div className="premium-card-status-zone">
+        {sold&&<div className="card-stamp sold-stamp">
+          <strong>선택 완료</strong>
+          <span>{team?.name} · {Number(player.soldPrice||0).toLocaleString()}P</span>
+        </div>}
 
-      {unsold&&<div className="card-stamp unsold-stamp">
-        <strong>유찰</strong>
-      </div>}
+        {unsold&&<div className="card-stamp unsold-stamp">
+          <strong>유찰</strong>
+        </div>}
 
-      {active&&player.status==='waiting'&&<div className="picked-crown">NEXT PICK</div>}
+        {active&&player.status==='waiting'&&<div className="picked-crown">NEXT PICK</div>}
+      </div>
     </button>;
   };
 
@@ -398,7 +412,7 @@ function Auction({
         <div className="arena-back toolbar-links"><span>LIVE DRAFT</span><small>선수를 추첨하고 팀을 선택하세요</small></div>
         <div className="arena-title">
           <small>GOCHUBAT DRAFT ARENA</small>
-          <h2>{settings.title}</h2>
+          <h2><TournamentTitle title={settings.title}/></h2>
         </div>
         <div className="arena-roulette-control dual inline-control">
           <div className={`toolbar-reel ${spinning?'is-spinning':'is-idle'}`}>
@@ -821,7 +835,7 @@ function Watch({
     <header className="spectator-header">
       <div>
         <div className="watch-brand">🌶️ 고추밭 AUCTION</div>
-        <h2>{settings.title}</h2>
+        <h2><TournamentTitle title={settings.title}/></h2>
       </div>
       <div className="spectator-status">
         <span className="status-live-dot"/>

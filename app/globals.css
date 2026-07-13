@@ -3003,3 +3003,236 @@ body,button,input,select{font-family:var(--font-ui)!important}
   .premium-focus-card .premium-name{font-size:48px}
   .arena-title h2{font-size:29px!important}
 }
+
+/* =========================================================
+   v2.4.1 POLISHED — spacing, title, team cards, atmosphere
+   ========================================================= */
+
+/* Exact title baseline: 제 / 숫자 / 회 / 대회명이 한 줄에서 같은 중심을 공유한다. */
+.arena-title h2,
+.single-brand h1{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  min-height:48px;
+  margin:0!important;
+  overflow:visible!important;
+}
+.tournament-title-text{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  white-space:nowrap;
+  font-family:Pretendard,SUIT,"Noto Sans KR",system-ui,sans-serif!important;
+  font-weight:1000;
+  font-style:normal;
+  line-height:1;
+  letter-spacing:-2.1px;
+  transform:translateY(1px);
+  text-rendering:geometricPrecision;
+}
+.tournament-title-text>span{
+  display:inline-block;
+  line-height:1;
+  transform:none!important;
+  vertical-align:middle;
+}
+.tournament-title-text .title-number{
+  margin:0 .015em;
+  font-size:.98em;
+  letter-spacing:-.04em;
+}
+.tournament-title-text .title-name{margin-left:.14em}
+.arena-title h2 .tournament-title-text{font-size:36px}
+.single-brand h1 .tournament-title-text{font-size:25px}
+
+/* 카드의 정보축: 상단 정보 → 중앙 이름 → 이름 바로 아래 상태. */
+.premium-card-content{
+  padding:28px 14px 22px!important;
+}
+.premium-tier{
+  font-size:17px!important;
+  line-height:1!important;
+}
+.premium-role{
+  margin-top:9px!important;
+  font-size:16px!important;
+  line-height:1!important;
+}
+.premium-name{
+  top:52%!important;
+  font-size:44px!important;
+  letter-spacing:-2.3px!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+}
+.premium-card-status-zone{
+  position:absolute;
+  z-index:5;
+  top:calc(52% + 38px);
+  left:12px;
+  right:12px;
+  min-height:54px;
+  display:flex;
+  justify-content:center;
+  align-items:flex-start;
+  pointer-events:none;
+}
+.card-stamp,
+.unsold-stamp,
+.picked-crown{
+  position:static!important;
+  left:auto!important;
+  right:auto!important;
+  top:auto!important;
+  bottom:auto!important;
+  transform:none!important;
+  margin:0!important;
+}
+.card-stamp{
+  min-width:100px;
+  padding:7px 12px!important;
+  border-radius:10px!important;
+  background:linear-gradient(180deg,rgba(18,21,31,.92),rgba(7,9,16,.94))!important;
+  border:1px solid rgba(255,255,255,.3)!important;
+  box-shadow:0 8px 20px rgba(0,0,0,.35),inset 0 0 18px rgba(255,255,255,.035)!important;
+  backdrop-filter:blur(8px);
+}
+.card-stamp strong{font-size:11px!important;letter-spacing:-.2px}
+.card-stamp span{font-size:8px!important;margin-top:3px!important;color:#ffe8a1!important}
+.unsold-stamp{
+  min-width:82px;
+  color:#ffafba!important;
+  border-color:rgba(255,112,135,.55)!important;
+}
+.picked-crown{
+  min-width:92px;
+  padding:7px 13px!important;
+  border-radius:999px!important;
+  background:linear-gradient(180deg,#4a420f,#1b1806)!important;
+  color:#fff3a9!important;
+  border:1px solid #ffe570!important;
+  box-shadow:0 0 24px rgba(255,224,90,.26),inset 0 0 14px rgba(255,255,255,.04)!important;
+  font-size:9px!important;
+  line-height:1.05!important;
+}
+
+/* 팀 미니카드: 위아래 여백을 동일하게 두고 정보 묶음을 정확히 중앙 배치. */
+.team-mini-card{
+  height:98px!important;
+  display:grid!important;
+  place-items:center!important;
+  align-content:center!important;
+  padding:10px 4px!important;
+  background:
+    radial-gradient(circle at 50% 26%,rgba(255,255,255,.28),transparent 29%),
+    linear-gradient(155deg,rgba(211,218,231,.92),rgba(78,86,103,.92) 58%,rgba(29,34,45,.96))!important;
+}
+.team-mini-card.filled{
+  background:
+    radial-gradient(circle at 50% 24%,color-mix(in srgb,var(--team-accent,#ffe072) 28%,transparent),transparent 32%),
+    repeating-linear-gradient(135deg,rgba(255,255,255,.035) 0 1px,transparent 1px 12px),
+    linear-gradient(160deg,#101b2d,#07101c 62%,#040810)!important;
+  border-color:color-mix(in srgb,var(--team-accent,#ffe072) 62%,white)!important;
+  box-shadow:inset 0 0 20px rgba(255,255,255,.05),0 4px 14px rgba(0,0,0,.35)!important;
+}
+.team-mini-card img,
+.team-mini-card>.portrait-placeholder{display:none!important}
+.mini-card-copy{
+  position:static!important;
+  inset:auto!important;
+  width:100%!important;
+  min-height:72px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:4px!important;
+  padding:0 2px!important;
+  text-align:center!important;
+  background:none!important;
+}
+.mini-card-copy b{
+  position:static!important;
+  color:#fff!important;
+  font-family:Pretendard,SUIT,"Noto Sans KR",sans-serif!important;
+  font-size:15px!important;
+  font-weight:1000!important;
+  line-height:1!important;
+  text-shadow:0 3px 10px rgba(0,0,0,.8)!important;
+}
+.mini-card-copy small{
+  color:#dbe6f3!important;
+  font-family:Pretendard,SUIT,"Noto Sans KR",sans-serif!important;
+  font-size:8px!important;
+  font-weight:900!important;
+  line-height:1!important;
+}
+.mini-card-copy span{
+  position:static!important;
+  color:#ffe487!important;
+  font-family:Pretendard,SUIT,"Noto Sans KR",sans-serif!important;
+  font-size:9px!important;
+  font-weight:1000!important;
+  line-height:1!important;
+}
+.team-panel-copy strong,
+.live-bid-entry input,
+.assign-price-box input,
+.assign-price-box em{
+  font-family:Pretendard,SUIT,"Noto Sans KR",system-ui,sans-serif!important;
+  font-variant-numeric:tabular-nums lining-nums!important;
+  font-feature-settings:"tnum" 1,"lnum" 1!important;
+  font-weight:1000!important;
+  letter-spacing:-.45px!important;
+}
+
+/* 배경: 느린 오로라, 대각선 광선, 미세한 반짝임. */
+body{
+  background:
+    radial-gradient(circle at 12% 12%,rgba(36,105,183,.13),transparent 30%),
+    radial-gradient(circle at 78% 18%,rgba(224,184,70,.08),transparent 25%),
+    linear-gradient(155deg,#020611 0%,#060c19 48%,#030711 100%)!important;
+}
+body::before{
+  background:
+    repeating-linear-gradient(118deg,transparent 0 88px,rgba(87,137,202,.055) 89px 90px,transparent 91px 178px),
+    radial-gradient(circle,rgba(255,224,115,.55) 0 1px,transparent 1.6px)!important;
+  background-size:auto,118px 136px!important;
+  opacity:.28!important;
+  animation:arenaBackgroundDrift 22s linear infinite!important;
+}
+body::after{
+  background:linear-gradient(105deg,transparent 38%,rgba(255,235,164,.045) 47%,rgba(132,190,255,.07) 50%,rgba(255,235,164,.035) 53%,transparent 62%)!important;
+  filter:blur(10px)!important;
+  opacity:.7!important;
+  animation:arenaLightSweep 11s ease-in-out infinite!important;
+}
+.draft-arena-shell::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:1;
+  pointer-events:none;
+  background-image:
+    radial-gradient(circle at 18% 22%,rgba(255,236,166,.8) 0 1px,transparent 1.8px),
+    radial-gradient(circle at 72% 36%,rgba(117,183,255,.6) 0 1px,transparent 1.6px),
+    radial-gradient(circle at 43% 78%,rgba(255,218,105,.55) 0 1px,transparent 1.7px);
+  background-size:173px 191px,229px 207px,251px 223px;
+  opacity:.19;
+  animation:arenaSparkleFloat 15s linear infinite;
+}
+@keyframes arenaBackgroundDrift{to{background-position:180px -120px,118px -136px}}
+@keyframes arenaLightSweep{0%,28%{transform:translateX(-28%)}68%,100%{transform:translateX(28%)}}
+@keyframes arenaSparkleFloat{to{background-position:173px -191px,-229px -207px,251px -223px}}
+
+/* Focus card stays consistent with the compact cards. */
+.premium-focus-card .premium-name{top:50%!important;font-size:68px!important}
+.premium-focus-card .premium-card-content{padding-top:42px!important}
+
+@media(max-width:700px){
+  .arena-title h2 .tournament-title-text{font-size:29px}
+  .premium-name{font-size:36px!important}
+  .premium-card-status-zone{top:calc(52% + 32px)}
+  .mini-card-copy b{font-size:12px!important}
+}
