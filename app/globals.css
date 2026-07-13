@@ -2796,266 +2796,210 @@ body,button,input,select{font-family:var(--font-ui)!important}
 }
 
 /* =========================================================
-   v2.3.1 PREMIUM UI HOTFIX
-   - title baseline balance
-   - roulette text isolation
-   - unified player cards (no gray/footer/name box)
+   v2.4 PREMIUM DISCORD DRAFT — final requested layout
    ========================================================= */
+:root{
+  --team-blue:#279cff;
+  --team-red:#ff5263;
+  --team-gold:#f5b942;
+  --team-purple:#9c6cff;
+  --team-green:#3bd28b;
+}
 
+/* Consistent tournament title: no dropped numeral, no serif mismatch. */
 .arena-title h2,
-.single-brand h1 {
-  font-family: Pretendard, SUIT, "Noto Sans KR", system-ui, sans-serif !important;
-  font-variant-numeric: lining-nums tabular-nums;
-  line-height: 1.08 !important;
-  letter-spacing: -1.4px !important;
-  word-break: keep-all;
-  text-rendering: geometricPrecision;
+.single-brand h1{
+  font-family:Pretendard,SUIT,"Noto Sans KR",system-ui,sans-serif!important;
+  font-variant-numeric:lining-nums tabular-nums!important;
+  font-feature-settings:"tnum" 1,"lnum" 1!important;
+  font-weight:1000!important;
+  line-height:1.08!important;
+  letter-spacing:-1.65px!important;
+  transform:none!important;
+  padding:0!important;
 }
+.arena-title h2{font-size:36px!important;text-wrap:balance}
 
-.arena-title h2 {
-  margin: 7px 0 0 !important;
-  display: flex;
-  align-items: baseline;
-  justify-content: center;
-  min-height: 38px;
-  font-size: clamp(26px, 2.2vw, 36px) !important;
-  font-weight: 950 !important;
-  text-shadow: 0 0 20px rgba(255, 219, 125, .16), 0 2px 0 rgba(0,0,0,.65);
-}
+/* Roulette must render exactly one layer at a time. */
+.toolbar-reel.is-spinning .toolbar-reel-result{display:none!important}
+.toolbar-reel.is-idle .toolbar-reel-track{display:none!important}
+.toolbar-reel.is-spinning .toolbar-reel-track{display:block!important}
 
-.arena-title small {
-  display:block;
-  text-align:center;
-  letter-spacing: 3.4px !important;
-}
-
-.toolbar-reel {
-  position: relative !important;
-  height: 46px !important;
-  min-width: 210px;
-  overflow: hidden !important;
-  isolation: isolate;
-  border: 1px solid rgba(235, 203, 116, .42) !important;
+/* Premium player card: tier + role + one large centered name. */
+.arena-player-card{
+  position:relative!important;
+  isolation:isolate!important;
+  min-height:286px!important;
+  display:block!important;
+  padding:0!important;
+  overflow:hidden!important;
+  border:1px solid rgba(255,221,122,.31)!important;
+  border-radius:14px!important;
   background:
-    linear-gradient(180deg, rgba(255,255,255,.035), transparent 42%),
-    linear-gradient(135deg, rgba(20,38,55,.98), rgba(4,10,17,.99)) !important;
-  box-shadow: inset 0 0 28px rgba(0,0,0,.55), 0 0 24px rgba(216,182,106,.08) !important;
+    radial-gradient(circle at 50% 40%,rgba(61,119,186,.22),transparent 36%),
+    radial-gradient(circle at 50% 125%,rgba(241,194,73,.16),transparent 42%),
+    repeating-linear-gradient(132deg,rgba(255,255,255,.028) 0 1px,transparent 1px 18px),
+    linear-gradient(155deg,#101d33 0%,#08111f 53%,#050a13 100%)!important;
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.035),
+    inset 0 -45px 90px rgba(0,0,0,.3),
+    0 13px 34px rgba(0,0,0,.42)!important;
+  transition:transform .22s ease,filter .22s ease,border-color .22s ease,box-shadow .22s ease!important;
 }
-
-.toolbar-reel::before,
-.toolbar-reel::after {
+.arena-player-card::before{
   content:"";
   position:absolute;
-  left:0; right:0;
-  height:12px;
-  z-index:4;
+  z-index:0;
+  inset:-75% -45%;
+  background:linear-gradient(112deg,transparent 42%,rgba(255,242,183,.03) 47%,rgba(255,240,166,.24) 50%,rgba(255,242,183,.04) 53%,transparent 58%);
+  transform:translateX(-48%) rotate(4deg);
+  animation:premiumSheen 5.8s ease-in-out infinite;
   pointer-events:none;
 }
-.toolbar-reel::before { top:0; background:linear-gradient(#07111c, transparent); }
-.toolbar-reel::after { bottom:0; background:linear-gradient(transparent, #07111c); }
+.arena-player-card::after{
+  content:"";
+  position:absolute;
+  z-index:0;
+  inset:0;
+  background-image:
+    radial-gradient(circle,rgba(255,220,118,.72) 0 1px,transparent 1.7px),
+    radial-gradient(circle,rgba(255,246,202,.32) 0 1px,transparent 1.6px);
+  background-size:74px 88px,113px 127px;
+  background-position:11px 19px,38px 64px;
+  opacity:.23;
+  animation:particleDrift 9s linear infinite;
+  pointer-events:none;
+}
+@keyframes premiumSheen{0%,32%{transform:translateX(-58%) rotate(4deg)}68%,100%{transform:translateX(58%) rotate(4deg)}}
+@keyframes particleDrift{to{background-position:85px -69px,151px -63px}}
 
-.toolbar-reel-track {
-  position:absolute !important;
-  inset:4px 0 auto 0;
-  display:block !important;
-  transition: transform .085s cubic-bezier(.2,.75,.35,1) !important;
-  will-change: transform;
+.premium-card-content{
+  position:absolute;
   z-index:2;
-}
-
-.toolbar-reel-track > div {
-  height:38px !important;
-  display:flex !important;
+  inset:0;
+  display:flex;
+  flex-direction:column;
   align-items:center;
-  justify-content:center;
+  text-align:center;
+  padding:31px 18px 24px;
+}
+.premium-tier{
+  color:#ffe18a;
+  font-size:16px;
+  font-weight:1000;
+  line-height:1.05;
+  letter-spacing:-.35px;
+  text-shadow:0 0 18px rgba(255,212,91,.22);
+}
+.premium-role{
+  margin-top:8px;
+  color:#dce9f8;
+  font-size:15px;
+  font-weight:900;
+  line-height:1;
+  letter-spacing:.6px;
+}
+.premium-name{
+  position:absolute;
+  top:52%;
+  left:12px;
+  right:12px;
+  transform:translateY(-50%);
+  color:#fff;
+  font-size:42px;
+  font-weight:1000;
+  line-height:1;
+  letter-spacing:-2px;
+  text-shadow:0 5px 16px rgba(0,0,0,.95),0 0 28px rgba(112,180,255,.12);
   white-space:nowrap;
   overflow:hidden;
   text-overflow:ellipsis;
-  color:#fff6cf !important;
-  font-size:18px !important;
-  font-weight:950 !important;
-  letter-spacing:-.5px;
-  text-shadow:0 0 14px rgba(255,215,104,.32), 0 2px 8px #000;
 }
-
-.toolbar-reel-result {
-  position:absolute !important;
-  inset:0 !important;
-  z-index:3;
-  display:flex !important;
-  align-items:center;
-  justify-content:center;
-  padding:0 14px;
-  color:#f5d979 !important;
-  font-size:16px !important;
-  font-weight:950 !important;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  background:transparent !important;
-  text-shadow:0 0 14px rgba(255,214,96,.28), 0 2px 8px #000;
+.arena-player-card:hover{
+  transform:translateY(-7px) perspective(800px) rotateX(1.5deg)!important;
+  filter:brightness(1.12)!important;
+  border-color:rgba(255,230,143,.67)!important;
+  box-shadow:inset 0 0 38px rgba(75,148,221,.08),0 22px 48px rgba(0,0,0,.5),0 0 28px rgba(255,209,79,.11)!important;
 }
-
-.toolbar-reel.is-spinning .toolbar-reel-result { display:none !important; }
-.toolbar-reel.is-idle .toolbar-reel-track { display:none !important; }
-
-.arena-player-grid,
-.standalone-player-grid {
-  gap:14px !important;
-  align-items:stretch;
+.arena-player-card.picked{
+  border-color:#ffe270!important;
+  box-shadow:0 0 0 2px rgba(255,229,119,.27),0 0 42px rgba(255,212,75,.47),inset 0 0 45px rgba(255,221,106,.08)!important;
 }
+.card-topline,.card-portrait,.card-center-name,.card-base-point,.card-info-stack,.card-name,.card-role{display:none!important}
 
-.arena-player-card {
-  position:relative !important;
-  min-height:248px !important;
-  padding:0 !important;
-  overflow:hidden !important;
-  border-radius:14px !important;
-  border:1px solid rgba(130,169,208,.34) !important;
+/* Focus card uses the exact same information hierarchy at a larger scale. */
+.focus-player-stage{gap:12px!important}
+.focus-player-card.premium-focus-card{
+  width:min(390px,72vw)!important;
+  height:500px!important;
+  position:relative!important;
+  overflow:hidden!important;
+  border:1px solid rgba(255,224,129,.48)!important;
+  border-radius:20px!important;
   background:
-    linear-gradient(150deg, rgba(255,255,255,.075), transparent 28%),
-    radial-gradient(circle at 50% 28%, rgba(92,133,190,.22), transparent 42%),
-    linear-gradient(180deg, #172236 0%, #0b1220 52%, #050910 100%) !important;
-  box-shadow:
-    inset 0 0 0 1px rgba(255,255,255,.025),
-    inset 0 -55px 90px rgba(0,0,0,.42),
-    0 18px 34px rgba(0,0,0,.32) !important;
-  transform:translateZ(0);
+    radial-gradient(circle at 50% 40%,rgba(57,123,199,.27),transparent 38%),
+    radial-gradient(circle at 50% 122%,rgba(245,194,64,.19),transparent 43%),
+    repeating-linear-gradient(132deg,rgba(255,255,255,.03) 0 1px,transparent 1px 22px),
+    linear-gradient(155deg,#12233c,#08121f 55%,#040811)!important;
+  box-shadow:0 35px 90px rgba(0,0,0,.55),0 0 44px rgba(255,215,83,.13),inset 0 0 42px rgba(255,255,255,.025)!important;
 }
-
-.arena-player-card::before {
+.focus-player-card.premium-focus-card::after{
   content:"";
   position:absolute;
   inset:0;
-  z-index:1;
-  pointer-events:none;
-  background:
-    linear-gradient(115deg, transparent 0 38%, rgba(255,255,255,.11) 48%, transparent 58%) -160% 0 / 220% 100% no-repeat,
-    linear-gradient(180deg, rgba(230,204,125,.14), transparent 12% 88%, rgba(230,204,125,.09));
-  opacity:.58;
-  transition:background-position .7s ease, opacity .25s ease;
+  background-image:radial-gradient(circle,rgba(255,221,119,.62) 0 1.2px,transparent 1.8px);
+  background-size:83px 99px;
+  opacity:.22;
+  animation:particleDrift 10s linear infinite;
+}
+.premium-focus-card .premium-tier{font-size:24px}
+.premium-focus-card .premium-role{font-size:20px;margin-top:12px}
+.premium-focus-card .premium-name{font-size:66px;top:50%;letter-spacing:-3.5px}
+.focus-player-card.premium-focus-card::before{inset:14px!important;border-color:rgba(255,234,164,.27)!important}
+.focus-card-rank,.focus-card-image,.focus-player-card>h2,.focus-player-card>p{display:none!important}
+
+/* Live operator bid field visible before a team is selected. */
+.live-bid-entry{
+  width:min(330px,78vw);
+  display:grid;
+  gap:7px;
+  text-align:center;
+}
+.live-bid-entry>span{color:#a9bed4;font-size:11px;font-weight:900;letter-spacing:.5px}
+.live-bid-entry>div{position:relative}
+.live-bid-entry input{
+  width:100%;
+  height:58px;
+  border:1px solid rgba(255,218,104,.5);
+  border-radius:13px;
+  outline:none;
+  background:linear-gradient(180deg,rgba(23,32,48,.96),rgba(10,15,25,.98));
+  color:#ffe487;
+  text-align:center;
+  padding:0 52px 0 20px;
+  font-size:31px;
+  font-weight:1000;
+  box-shadow:inset 0 0 26px rgba(255,210,68,.04),0 0 20px rgba(0,0,0,.25);
+}
+.live-bid-entry input:focus{border-color:#ffe27b;box-shadow:0 0 0 3px rgba(255,218,104,.11),0 0 26px rgba(255,199,45,.13)}
+.live-bid-entry em{position:absolute;right:24px;top:50%;transform:translateY(-50%);color:#ffe487;font-size:20px;font-style:normal;font-weight:1000}
+
+/* Five requested team colors and matching selection glow. */
+.arena-team-panel.palette-0{--team-accent:var(--team-blue);background:linear-gradient(110deg,rgba(26,137,226,.96),rgba(7,45,92,.78))!important}
+.arena-team-panel.palette-1{--team-accent:var(--team-red);background:linear-gradient(110deg,rgba(219,55,72,.96),rgba(92,13,28,.78))!important}
+.arena-team-panel.palette-2{--team-accent:var(--team-gold);background:linear-gradient(110deg,rgba(224,153,34,.96),rgba(94,54,6,.78))!important}
+.arena-team-panel.palette-3{--team-accent:var(--team-purple);background:linear-gradient(110deg,rgba(123,75,210,.96),rgba(48,24,91,.78))!important}
+.arena-team-panel.palette-4{--team-accent:var(--team-green);background:linear-gradient(110deg,rgba(31,159,103,.96),rgba(10,71,43,.78))!important}
+.arena-team-panel:hover,.arena-team-panel.team-selected{
+  border-color:var(--team-accent)!important;
+  box-shadow:inset 0 0 34px rgba(255,255,255,.07),0 0 0 2px color-mix(in srgb,var(--team-accent) 32%,transparent),0 0 27px color-mix(in srgb,var(--team-accent) 32%,transparent)!important;
 }
 
-.arena-player-card::after {
-  content:"";
-  position:absolute;
-  inset:7px;
-  z-index:1;
-  pointer-events:none;
-  border:1px solid rgba(219,195,124,.13);
-  border-radius:10px;
-}
+/* The unsold roulette now shares the same focus/assignment UI. */
+.arena-player-card.unsold.picked{filter:none!important;opacity:1!important}
 
-.arena-player-card:hover {
-  transform:translateY(-7px) scale(1.018) !important;
-  border-color:rgba(241,211,122,.78) !important;
-  box-shadow:0 26px 52px rgba(0,0,0,.46), 0 0 30px rgba(224,190,101,.15) !important;
-}
-.arena-player-card:hover::before { background-position:140% 0, 0 0; opacity:1; }
-
-.arena-player-card .card-topline {
-  position:relative !important;
-  z-index:3;
-  min-height:48px;
-  padding:13px 14px 10px !important;
-  display:flex;
-  align-items:flex-start;
-  justify-content:space-between;
-  gap:8px;
-  border:0 !important;
-  background:linear-gradient(180deg, rgba(0,0,0,.3), transparent) !important;
-}
-
-.arena-player-card .card-topline span,
-.arena-player-card .card-topline b {
-  font-size:12px !important;
-  line-height:1.15;
-  font-weight:950 !important;
-  letter-spacing:-.2px;
-  text-shadow:0 2px 7px rgba(0,0,0,.9);
-}
-.arena-player-card .card-topline span { color:#f4f7fb !important; }
-.arena-player-card .card-topline b { color:#f3cf67 !important; text-align:right; }
-
-.arena-player-card .card-portrait {
-  position:absolute !important;
-  inset:42px 0 42px !important;
-  z-index:2;
-  display:grid !important;
-  place-items:center;
-  border:0 !important;
-  background:transparent !important;
-  opacity:.26;
-  pointer-events:none;
-}
-
-.arena-player-card .card-portrait .portrait-placeholder {
-  width:118px !important;
-  height:118px !important;
-  border-radius:50% !important;
-  border:1px solid rgba(178,202,231,.22) !important;
-  background:radial-gradient(circle, rgba(103,139,184,.28), rgba(10,17,28,.04) 68%) !important;
-  box-shadow:0 0 38px rgba(101,153,218,.13) !important;
-}
-.arena-player-card .card-portrait .portrait-placeholder span {
-  font-size:40px !important;
-  color:rgba(233,241,251,.34) !important;
-}
-.arena-player-card .card-portrait .portrait-placeholder i { display:none !important; }
-
-.arena-player-card .card-center-name {
-  position:absolute !important;
-  inset:0 !important;
-  z-index:4;
-  display:flex !important;
-  align-items:center;
-  justify-content:center;
-  padding:48px 12px 20px !important;
-  margin:0 !important;
-  border:0 !important;
-  background:transparent !important;
-  color:#fff !important;
-  font-size:clamp(27px,2vw,36px) !important;
-  line-height:1 !important;
-  font-weight:1000 !important;
-  letter-spacing:-1.9px !important;
-  text-shadow:0 3px 12px rgba(0,0,0,.95), 0 0 18px rgba(169,204,255,.12);
-}
-
-.arena-player-card .card-base-point { display:none !important; }
-
-.arena-player-card.picked {
-  border-color:#f6db78 !important;
-  box-shadow:0 0 0 1px rgba(255,225,126,.28), 0 0 32px rgba(255,215,93,.30), inset 0 0 42px rgba(255,215,93,.07) !important;
-}
-
-.arena-player-card.completed { filter:saturate(.55) brightness(.63); }
-.arena-player-card.unsold { border-color:rgba(239,97,113,.62) !important; }
-
-.picked-crown,
-.card-stamp {
-  z-index:6 !important;
-  backdrop-filter:blur(8px);
-}
-
-.focus-player-card {
-  border-radius:20px !important;
-  background:
-    linear-gradient(145deg, rgba(255,255,255,.08), transparent 34%),
-    radial-gradient(circle at 50% 28%, rgba(69,142,218,.25), transparent 44%),
-    linear-gradient(180deg,#15253d,#070d17) !important;
-  box-shadow:0 30px 80px rgba(0,0,0,.5),0 0 45px rgba(50,151,230,.16) !important;
-}
-.focus-player-card h2 {
-  background:transparent !important;
-  border:0 !important;
-  box-shadow:none !important;
-  font-size:48px !important;
-  letter-spacing:-2.5px !important;
-}
-
-@media (max-width: 900px) {
-  .arena-player-card { min-height:210px !important; }
-  .arena-title h2 { font-size:25px !important; }
-  .toolbar-reel { min-width:160px; }
+@media(max-width:700px){
+  .premium-name{font-size:34px}
+  .premium-focus-card .premium-name{font-size:48px}
+  .arena-title h2{font-size:29px!important}
 }

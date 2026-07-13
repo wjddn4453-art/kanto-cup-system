@@ -53,6 +53,40 @@ function AppShell({active,setActive,settings,children}) {
     <section className="single-content">{children}</section>
   </main>;
 }
+function playUiSound(kind, enabled = true) {
+  if (!enabled || typeof window === 'undefined') return;
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = window.__gochubatAudioContext || new AudioCtx();
+    window.__gochubatAudioContext = ctx;
+    if (ctx.state === 'suspended') ctx.resume();
+
+    const now = ctx.currentTime;
+    const patterns = {
+      select: [[520, .05, .055], [760, .08, .05]],
+      tick: [[760, .025, .025]],
+      bid: [[440, .04, .05], [660, .06, .045]],
+      sold: [[392, .08, .06], [523, .11, .065], [784, .2, .08]],
+      unsold: [[220, .12, .06], [164, .28, .055]],
+      result: [[659, .06, .055], [880, .13, .06]],
+    };
+    const notes = patterns[kind] || patterns.select;
+    notes.forEach(([frequency, duration, gain], index) => {
+      const osc = ctx.createOscillator();
+      const amp = ctx.createGain();
+      osc.type = kind === 'unsold' ? 'sine' : 'triangle';
+      osc.frequency.setValueAtTime(frequency, now + index * .045);
+      amp.gain.setValueAtTime(0.0001, now + index * .045);
+      amp.gain.exponentialRampToValueAtTime(gain, now + index * .045 + .008);
+      amp.gain.exponentialRampToValueAtTime(0.0001, now + index * .045 + duration);
+      osc.connect(amp).connect(ctx.destination);
+      osc.start(now + index * .045);
+      osc.stop(now + index * .045 + duration + .02);
+    });
+  } catch {}
+}
+
 function Auction({
   players,setPlayers,teams,setTeams,settings,recent,setRecent,
   currentPlayerId,setCurrentPlayerId,
@@ -100,7 +134,8 @@ function Auction({
     setCurrentPlayerId(player.id);
     setRouletteName(player.name);
     setSelectedTeam(null);
-    setPriceInput('0');
+    setPriceInput(String(player.basePoint ?? 0));
+    playUiSound('select', settings.sound);
     if(openFocus)setView('focus');
     pushEvent({
       type:'player-selected',
@@ -118,6 +153,7 @@ function Auction({
     setSpinning(true);
     setRouletteItems(pool);
     setRouletteStep(0);
+    playUiSound('select', settings.sound);
     pushEvent({type:'roulette-start',mode});
 
     let tick=0;
@@ -128,6 +164,7 @@ function Auction({
       setRouletteStep(tick%pool.length);
       setRouletteName(preview.name);
       setCurrentPlayerId(preview.id);
+      if(tick % 2 === 0) playUiSound('tick', settings.sound);
       pushEvent({type:'roulette-preview',name:preview.name,mode});
       tick+=1;
       if(tick>=total){
@@ -135,6 +172,7 @@ function Auction({
         setRouletteName(picked.name);
         setCurrentPlayerId(picked.id);
         pushEvent({type:'roulette-result',player:picked,mode});
+        playUiSound('result', settings.sound);
         setSpinning(false);
         setTimeout(()=>setView('focus'),650);
         return;
@@ -146,9 +184,10 @@ function Auction({
   };
   const openAssign=(team)=>{
     if(!current)return alert('먼저 선수를 선택하세요.');
-    if(current.status!=='waiting')return;
+    if(!['waiting','unsold'].includes(current.status))return;
     setSelectedTeam(team.id);
-    setPriceInput('0');
+    if(priceInput === '') setPriceInput(String(current.basePoint ?? 0));
+    playUiSound('bid', settings.sound);
     setAssignModal(true);
   };
 
@@ -196,6 +235,7 @@ function Auction({
     setRecent(r=>[sale,...r].slice(0,30));
     setUnsoldList?.(u=>u.filter(x=>x.player!==current.name));
     setOverlay({type:'sold',player:current.name,team:team.name,price});
+    playUiSound('sold', settings.sound);
     pushEvent({type:'sold',sale});
     onStateChanged?.({livePrice:price,liveTeamName:team.name,liveTimer:0});
 
@@ -221,6 +261,7 @@ function Auction({
     setPlayers(ps=>ps.map(p=>p.id===current.id?{...p,status:'unsold',excluded:true}:p));
     setUnsoldList?.(u=>[entry,...u.filter(x=>x.player!==current.name)].slice(0,30));
     setOverlay({type:'unsold',player:current.name});
+    playUiSound('unsold', settings.sound);
     pushEvent({type:'unsold',player:current.name,entry});
     setCurrentPlayerId(null);
     setRouletteName('룰렛 대기');
@@ -257,7 +298,7 @@ function Auction({
   };
 
   const PlayerCard=({player})=>{
-    const active=player.id===currentPlayerId&&player.status==='waiting';
+    const active=player.id===currentPlayerId&&['waiting','unsold'].includes(player.status);
     const sold=player.status==='sold';
     const unsold=player.status==='unsold';
     const team=teams.find(t=>t.id===player.soldTeamId);
@@ -273,16 +314,11 @@ function Auction({
       ].join(' ')}
       onClick={()=>['waiting','unsold'].includes(player.status)&&choosePlayer(player,true)}
     >
-      <div className="card-topline">
-        <span>{player.tier}</span>
-        <b>{roleText}</b>
+      <div className="premium-card-content">
+        <span className="premium-tier">{player.tier}</span>
+        <b className="premium-role">{roleText}</b>
+        <strong className="premium-name">{player.name}</strong>
       </div>
-
-      <div className="card-portrait">
-        <PlayerPortrait player={player}/>
-      </div>
-
-      <div className="card-center-name">{player.name}</div>
 
       {sold&&<div className="card-stamp sold-stamp">
         <strong>선택 완료</strong>
@@ -412,14 +448,21 @@ function Auction({
 
         <section className="focus-player-stage">
           <div className="focus-beam"/>
-          <div className="focus-player-card">
-            <div className="focus-card-rank">{current?.tier}</div>
-            <div className="focus-card-image"><PlayerPortrait player={current}/></div>
-            <h2>{current?.name}</h2>
-            <p>{current?.main} / {current?.sub&&current.sub!=='없음'?current.sub:'없음'}</p>
+          <div className="focus-player-card premium-focus-card">
+            <div className="premium-card-content">
+              <span className="premium-tier">{current?.tier}</span>
+              <b className="premium-role">{current?.main}{current?.sub&&current.sub!=='없음'?` / ${current.sub}`:''}</b>
+              <strong className="premium-name">{current?.name}</strong>
+            </div>
           </div>
-          <div className="focus-price">0 P</div>
-          <small>선수를 영입할 팀을 클릭하세요.</small>
+          <label className="live-bid-entry">
+            <span>현재 입찰가</span>
+            <div>
+              <input type="number" min="0" value={priceInput} onChange={e=>setPriceInput(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&selectedTeam)openAssign(teams.find(t=>t.id===selectedTeam))}} />
+              <em>P</em>
+            </div>
+          </label>
+          <small>입찰가를 적고 선수를 영입할 팀을 클릭하세요.</small>
           <button className="focus-unsold-btn" onClick={markUnsold}>유찰 처리</button>
         </section>
 
@@ -489,6 +532,7 @@ function FullPlayerList({players,teams,setActive,setCurrentPlayerId}){
           <div className="card-topline"><span>{p.tier}</span><b>{roles}</b></div>
           <div className="card-portrait"><div className="portrait-placeholder"><span>{p.name.slice(0,2)}</span></div></div>
           <div className="card-center-name">{p.name}</div>
+          <div className="card-base-point">{Number(p.basePoint??100).toLocaleString()}P</div>
           {p.status==='sold'&&<div className="card-stamp"><strong>선택 완료</strong><span>{team?.name} · {p.soldPrice}P</span></div>}
           {p.status==='unsold'&&<div className="card-stamp unsold-stamp"><strong>유찰</strong></div>}
         </button>
