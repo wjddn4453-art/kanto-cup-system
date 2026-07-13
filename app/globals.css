@@ -3361,3 +3361,102 @@ body::after{
   .standalone-player-grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))!important}
   .arena-player-card.standalone .premium-name{font-size:36px!important}
 }
+
+/* =========================================================
+   v2.4.3 — FINAL STATUS BADGE ALIGNMENT FIX
+   Keep NEXT PICK / SOLD / UNSOLD directly under the centered name.
+   ========================================================= */
+.arena-player-card{
+  --player-name-y:50%;
+  --player-status-gap:42px;
+}
+
+.arena-player-card .premium-name{
+  top:var(--player-name-y)!important;
+}
+
+.arena-player-card .premium-card-status-zone{
+  position:absolute!important;
+  z-index:8!important;
+  top:calc(var(--player-name-y) + var(--player-status-gap))!important;
+  left:50%!important;
+  right:auto!important;
+  width:max-content!important;
+  max-width:calc(100% - 24px)!important;
+  min-height:0!important;
+  transform:translateX(-50%)!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  pointer-events:none!important;
+}
+
+.arena-player-card .premium-card-status-zone > *{
+  position:relative!important;
+  inset:auto!important;
+  transform:none!important;
+  margin:0!important;
+  flex:0 0 auto!important;
+}
+
+.arena-player-card .card-stamp,
+.arena-player-card .picked-crown{
+  min-width:0!important;
+  width:auto!important;
+  max-width:100%!important;
+  min-height:28px!important;
+  padding:6px 14px!important;
+  border-radius:999px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  white-space:nowrap!important;
+  box-sizing:border-box!important;
+}
+
+.arena-player-card .card-stamp.unsold-stamp{
+  min-width:78px!important;
+  background:linear-gradient(180deg,rgba(126,31,57,.98),rgba(48,10,24,.99))!important;
+  border:1px solid rgba(255,116,147,.72)!important;
+  box-shadow:0 0 16px rgba(255,72,112,.28),inset 0 0 12px rgba(255,255,255,.035)!important;
+}
+
+.arena-player-card .card-stamp.unsold-stamp strong{
+  font-size:11px!important;
+  line-height:1!important;
+  letter-spacing:0!important;
+}
+
+.arena-player-card .card-stamp.sold-stamp{
+  min-width:104px!important;
+}
+
+.arena-player-card .picked-crown{
+  min-width:94px!important;
+}
+
+/* The status belongs to the same visual group as the name, so dim both equally. */
+.arena-player-card.completed .premium-card-content,
+.arena-player-card.unsold .premium-card-content{
+  opacity:.88!important;
+}
+
+/* Full-list cards use the exact same center axis. */
+.arena-player-card.standalone{
+  --player-name-y:50%;
+  --player-status-gap:42px;
+}
+
+/* Larger focus card gets proportionally more breathing room. */
+.premium-focus-card{
+  --player-name-y:50%;
+  --player-status-gap:58px;
+}
+
+@media(max-width:700px){
+  .arena-player-card,
+  .arena-player-card.standalone{
+    --player-status-gap:38px;
+  }
+}
