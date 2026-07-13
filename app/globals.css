@@ -3236,3 +3236,128 @@ body::after{
   .premium-card-status-zone{top:calc(52% + 32px)}
   .mini-card-copy b{font-size:12px!important}
 }
+
+/* =========================================================
+   v2.4.2 BALANCE FIX — status, team slots, full list
+   ========================================================= */
+
+/* 상태 배지는 이름 바로 아래에 붙되 카드 중심축을 깨지 않도록 작고 안정적으로. */
+.premium-card-status-zone{
+  top:calc(52% + 52px)!important;
+  min-height:38px!important;
+  align-items:flex-start!important;
+}
+.card-stamp,
+.picked-crown{
+  min-height:30px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  padding:6px 13px!important;
+  line-height:1!important;
+}
+.card-stamp.unsold-stamp{
+  min-width:92px!important;
+  border-radius:9px!important;
+  background:linear-gradient(180deg,rgba(92,20,40,.96),rgba(32,8,17,.98))!important;
+  box-shadow:0 0 20px rgba(255,78,112,.24),inset 0 0 16px rgba(255,255,255,.03)!important;
+}
+.card-stamp.unsold-stamp strong{
+  font-size:12px!important;
+  line-height:1!important;
+  color:#ffd2da!important;
+}
+.card-stamp.sold-stamp{
+  min-width:112px!important;
+  border-color:rgba(255,224,126,.48)!important;
+  background:linear-gradient(180deg,rgba(60,48,13,.96),rgba(19,15,5,.98))!important;
+}
+.picked-crown{
+  min-width:104px!important;
+  font-size:10px!important;
+}
+
+/* 낙찰/유찰 카드도 정보를 숨기지 않고, 상태만 은은하게 구분. */
+.arena-player-card.completed,
+.arena-player-card.unsold{
+  filter:none!important;
+  opacity:1!important;
+}
+.arena-player-card.completed{
+  background:
+    radial-gradient(circle at 50% 38%,rgba(96,89,48,.13),transparent 37%),
+    repeating-linear-gradient(132deg,rgba(255,255,255,.022) 0 1px,transparent 1px 18px),
+    linear-gradient(155deg,#171812 0%,#0b0d0d 53%,#050606 100%)!important;
+  border-color:rgba(255,222,117,.22)!important;
+}
+.arena-player-card.unsold{
+  background:
+    radial-gradient(circle at 50% 38%,rgba(149,40,68,.13),transparent 37%),
+    repeating-linear-gradient(132deg,rgba(255,255,255,.022) 0 1px,transparent 1px 18px),
+    linear-gradient(155deg,#1a1117 0%,#0c090d 53%,#050506 100%)!important;
+  border-color:rgba(255,102,133,.28)!important;
+}
+.arena-player-card.completed .premium-card-content,
+.arena-player-card.unsold .premium-card-content{
+  opacity:.78!important;
+}
+
+/* 전체목록은 경매 카드와 완전히 같은 마크업/레이아웃을 사용한다. */
+.full-list-page{
+  min-height:calc(100vh - 122px);
+  background:linear-gradient(180deg,rgba(3,11,22,.96),rgba(2,7,15,.99));
+}
+.standalone-player-grid{
+  grid-template-columns:repeat(auto-fill,minmax(185px,1fr))!important;
+  gap:16px!important;
+  padding:0 18px 28px!important;
+  align-items:start!important;
+}
+.arena-player-card.standalone{
+  min-height:286px!important;
+  width:100%!important;
+}
+.arena-player-card.standalone .premium-name{
+  font-size:42px!important;
+}
+
+/* 팀 영입 슬롯: 이름/라인/포인트 묶음을 정확히 카드 중앙으로. */
+.team-mini-card{
+  height:104px!important;
+  min-width:0!important;
+  padding:0!important;
+  overflow:hidden!important;
+}
+.team-mini-card.filled{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+}
+.mini-card-copy{
+  min-height:100%!important;
+  width:100%!important;
+  padding:12px 4px 11px!important;
+  gap:5px!important;
+  justify-content:center!important;
+}
+.mini-card-copy b{
+  font-size:16px!important;
+  letter-spacing:-.7px!important;
+}
+.mini-card-copy small{
+  font-size:8px!important;
+  letter-spacing:.1px!important;
+}
+.mini-card-copy span{
+  margin-top:1px!important;
+  font-size:9px!important;
+}
+.team-slot-row{
+  align-items:center!important;
+}
+
+@media(max-width:900px){
+  .standalone-player-grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))!important}
+  .arena-player-card.standalone .premium-name{font-size:36px!important}
+}

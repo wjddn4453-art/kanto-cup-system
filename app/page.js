@@ -543,12 +543,15 @@ function FullPlayerList({players,teams,setActive,setCurrentPlayerId}){
         const team=teams.find(t=>t.id===p.soldTeamId);
         const roles=`${p.main}${p.sub&&p.sub!=='없음'?` / ${p.sub}`:''}`;
         return <button key={p.id} className={`arena-player-card standalone ${p.status==='sold'?'completed':''} ${p.status==='unsold'?'unsold':''}`} onClick={()=>['waiting','unsold'].includes(p.status)&&choose(p)}>
-          <div className="card-topline"><span>{p.tier}</span><b>{roles}</b></div>
-          <div className="card-portrait"><div className="portrait-placeholder"><span>{p.name.slice(0,2)}</span></div></div>
-          <div className="card-center-name">{p.name}</div>
-          <div className="card-base-point">{Number(p.basePoint??100).toLocaleString()}P</div>
-          {p.status==='sold'&&<div className="card-stamp"><strong>선택 완료</strong><span>{team?.name} · {p.soldPrice}P</span></div>}
-          {p.status==='unsold'&&<div className="card-stamp unsold-stamp"><strong>유찰</strong></div>}
+          <div className="premium-card-content">
+            <span className="premium-tier">{p.tier}</span>
+            <b className="premium-role">{roles}</b>
+            <strong className="premium-name">{p.name}</strong>
+          </div>
+          <div className="premium-card-status-zone">
+            {p.status==='sold'&&<div className="card-stamp sold-stamp"><strong>선택 완료</strong><span>{team?.name} · {Number(p.soldPrice||0).toLocaleString()}P</span></div>}
+            {p.status==='unsold'&&<div className="card-stamp unsold-stamp"><strong>유찰</strong></div>}
+          </div>
         </button>
       })}
     </div>
