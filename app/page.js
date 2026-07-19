@@ -35,11 +35,11 @@ function averageTier(roster=[]){
 }
 
 const DEFAULT_PLAYERS = [
-  {id:1,name:'정우',tier:'마스터',main:'TOP',sub:'JUG',status:'waiting',excluded:false,basePoint:100},
-  {id:2,name:'대현',tier:'챌린저',main:'JUG',sub:'TOP',status:'waiting',excluded:false,basePoint:100},
-  {id:3,name:'준휘',tier:'마스터',main:'MID',sub:'ADC',status:'waiting',excluded:false,basePoint:100},
-  {id:4,name:'수민',tier:'에메랄드',main:'ADC',sub:'MID',status:'waiting',excluded:false,basePoint:100},
-  {id:5,name:'지훈',tier:'마스터',main:'SUP',sub:'JUG',status:'waiting',excluded:false,basePoint:100}
+  {id:1,name:'정우',tier:'마스터',main:'TOP',sub:'JUG',status:'waiting',excluded:false},
+  {id:2,name:'대현',tier:'챌린저',main:'JUG',sub:'TOP',status:'waiting',excluded:false},
+  {id:3,name:'준휘',tier:'마스터',main:'MID',sub:'ADC',status:'waiting',excluded:false},
+  {id:4,name:'수민',tier:'에메랄드',main:'ADC',sub:'MID',status:'waiting',excluded:false},
+  {id:5,name:'지훈',tier:'마스터',main:'SUP',sub:'JUG',status:'waiting',excluded:false}
 ];
 
 function makeTeams(settings, old = []) {
@@ -168,7 +168,7 @@ function Auction({
     setCurrentPlayerId(player.id);
     setRouletteName(player.name);
     setSelectedTeam(null);
-    setPriceInput(String(player.basePoint ?? 0));
+    setPriceInput('');
     playUiSound('select', settings.sound);
     if(openFocus)setView('focus');
     pushEvent({
@@ -220,7 +220,7 @@ function Auction({
     if(!current)return alert('먼저 선수를 선택하세요.');
     if(!['waiting','unsold'].includes(current.status))return;
     setSelectedTeam(team.id);
-    if(priceInput === '') setPriceInput(String(current.basePoint ?? 0));
+    if(priceInput === '') setPriceInput('0');
     playUiSound('bid', settings.sound);
     setAssignModal(true);
   };
@@ -527,11 +527,11 @@ function Auction({
 }
 
 function Players({players,setPlayers,savePlayerSlot,loadPlayerSlot,playerSlots}) {
-  const [f,setF]=useState({name:'',tier:'마스터',main:'TOP',sub:'없음',basePoint:100});
+  const [f,setF]=useState({name:'',tier:'마스터',main:'TOP',sub:'없음'});
   const add=()=>{
     if(!f.name.trim())return;
     setPlayers(p=>[...p,{id:Date.now(),...f,status:'waiting',excluded:false,imageUrl:''}]);
-    setF({name:'',tier:'마스터',main:'TOP',sub:'없음',basePoint:100});
+    setF({name:'',tier:'마스터',main:'TOP',sub:'없음'});
   };
   const [slotName,setSlotName]=useState('제3회 관동지방컵 명단');
   return <section className="panel full-panel">
@@ -542,16 +542,15 @@ function Players({players,setPlayers,savePlayerSlot,loadPlayerSlot,playerSlots})
       <select value={f.tier} onChange={e=>setF({...f,tier:e.target.value})}>{TIERS.map(t=><option key={t}>{t}</option>)}</select>
       <select value={f.main} onChange={e=>setF({...f,main:e.target.value})}>{ROLES.map(r=><option key={r}>{r}</option>)}</select>
       <select value={f.sub} onChange={e=>setF({...f,sub:e.target.value})}><option>없음</option>{ROLES.map(r=><option key={r}>{r}</option>)}</select>
-      <input type="number" min="0" value={f.basePoint} onChange={e=>setF({...f,basePoint:Number(e.target.value)||0})} placeholder="기본 포인트"/>
       <button className="primary-btn" onClick={add}>선수 추가</button>
     </div>
     <div className="player-table">
-      <div className="table-head"><span>선수</span><span>티어</span><span>주라인</span><span>부라인</span><span>기본P</span><span>상태</span><span/></div>
+      <div className="table-head"><span>선수</span><span>티어</span><span>주라인</span><span>부라인</span><span>상태</span><span/></div>
       {players.map(p=><div className="table-row" key={p.id}>
-        <b>{p.name}</b><span>{p.tier}</span><span>{p.main}</span><span>{p.sub||'없음'}</span><span>{Number(p.basePoint??100)}P</span>
+        <b>{p.name}</b><span>{p.tier}</span><span>{p.main}</span><span>{p.sub||'없음'}</span>
         <span className={`wait-tag ${p.status}`}>{p.status==='waiting'?'대기':p.status==='sold'?'낙찰':'유찰 매물'}</span>
         <div className="row-actions">
-          {p.status!=='waiting'&&<button onClick={()=>setPlayers(ps=>ps.map(x=>x.id===p.id?{...x,status:'waiting',excluded:false,basePoint:100}:x))}>복구</button>}
+          {p.status!=='waiting'&&<button onClick={()=>setPlayers(ps=>ps.map(x=>x.id===p.id?{...x,status:'waiting',excluded:false}:x))}>복구</button>}
           <button onClick={()=>setPlayers(ps=>ps.filter(x=>x.id!==p.id))}>삭제</button>
         </div>
       </div>)}
@@ -1105,13 +1104,13 @@ function Pinball({config,setConfig}) {
         s.spinner+=dt*1.3;
         for(const b of s.balls.filter(x=>!x.done)){
           b.vy+=520*dt;b.x+=b.vx*60*dt;b.y+=b.vy*dt;
-          if(b.x-b.r<42){b.x=42+b.r;b.vx=Math.abs(b.vx)*.86+Math.random()*.4}
-          if(b.x+b.r>758){b.x=758-b.r;b.vx=-Math.abs(b.vx)*.86-Math.random()*.4}
+          if(b.x-b.r<42){b.x=42+b.r;b.vx=Math.max(0,b.vx)*.08}
+          if(b.x+b.r>758){b.x=758-b.r;b.vx=Math.min(0,b.vx)*.08}
           collideObstacles(b,map,s.spinner);
           if(b.y>map.height-85){b.done=true;b.finish=now;s.rank.push(b.name);setRankings([...s.rank]);}
         }
         const alive=s.balls.filter(x=>!x.done);
-        for(let i=0;i<alive.length;i++)for(let j=i+1;j<alive.length;j++)collideBalls(alive[i],alive[j]);
+        // 공끼리는 서로 통과하도록 두어 충돌 시 밀쳐지거나 속도가 바뀌지 않게 합니다.
         const lead=alive.sort((a,b)=>b.y-a.y)[0];
         if(lead){setLeader(lead.name);const target=Math.max(0,lead.y-360);s.cameraY+=(target-s.cameraY)*.055;}
         if(!alive.length){setRunning(false);const winner=config.winnerMode==='last'?s.rank[s.rank.length-1]:s.rank[0];setStatus(`당첨: ${winner}`);drawScene(ctx,c,s,map,config);return;}
@@ -1152,7 +1151,6 @@ function Pinball({config,setConfig}) {
   </section>;
 }
 
-function collideBalls(a,b){const dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy),min=a.r+b.r;if(!d||d>=min)return;const nx=dx/d,ny=dy/d,over=min-d;a.x-=nx*over/2;a.y-=ny*over/2;b.x+=nx*over/2;b.y+=ny*over/2;const p=2*(a.vx*nx+a.vy*ny-b.vx*nx-b.vy*ny)/2;a.vx-=p*nx;a.vy-=p*ny;b.vx+=p*nx;b.vy+=p*ny;}
 function collideObstacles(b,map,angle){for(const o of map.obstacles){if(o[0]==='line')collideLine(b,o[1],o[2],o[3],o[4]);if(o[0]==='spinner'){const ca=Math.cos(angle),sa=Math.sin(angle),len=o[3],x1=o[1]-ca*len,y1=o[2]-sa*len,x2=o[1]+ca*len,y2=o[2]+sa*len;collideLine(b,x1,y1,x2,y2,true)}if(o[0]==='peggrid')for(let r=0;r<o[4];r++)for(let c=0;c<o[3];c++)collidePeg(b,o[1]+c*o[5]+(r%2?o[5]/2:0),o[2]+r*o[6],9);}}
 function collidePeg(b,x,y,r){const dx=b.x-x,dy=b.y-y,d=Math.hypot(dx,dy),min=b.r+r;if(!d||d>=min)return;const nx=dx/d,ny=dy/d;b.x=x+nx*min;b.y=y+ny*min;const dot=b.vx*nx+b.vy*ny;b.vx=(b.vx-2*dot*nx)*.84+(Math.random()-.5)*.5;b.vy=(b.vy-2*dot*ny)*.84;}
 function collideLine(b,x1,y1,x2,y2,boost=false){const vx=x2-x1,vy=y2-y1,l2=vx*vx+vy*vy;let t=((b.x-x1)*vx+(b.y-y1)*vy)/l2;t=Math.max(0,Math.min(1,t));const px=x1+t*vx,py=y1+t*vy,dx=b.x-px,dy=b.y-py,d=Math.hypot(dx,dy);if(!d||d>=b.r+7)return;const nx=dx/d,ny=dy/d;b.x=px+nx*(b.r+7);b.y=py+ny*(b.r+7);const dot=b.vx*nx+b.vy*ny;b.vx=(b.vx-2*dot*nx)*.82+(boost?(Math.random()-.5)*1.5:0);b.vy=(b.vy-2*dot*ny)*.82;}
