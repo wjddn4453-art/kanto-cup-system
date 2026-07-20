@@ -35,11 +35,11 @@ function averageTier(roster=[]){
 }
 
 const DEFAULT_PLAYERS = [
-  {id:1,name:'정우',tier:'마스터',main:'TOP',sub:'JUG',status:'waiting',excluded:false},
-  {id:2,name:'대현',tier:'챌린저',main:'JUG',sub:'TOP',status:'waiting',excluded:false},
-  {id:3,name:'준휘',tier:'마스터',main:'MID',sub:'ADC',status:'waiting',excluded:false},
-  {id:4,name:'수민',tier:'에메랄드',main:'ADC',sub:'MID',status:'waiting',excluded:false},
-  {id:5,name:'지훈',tier:'마스터',main:'SUP',sub:'JUG',status:'waiting',excluded:false}
+  {id:1,name:'정우',tier:'마스터',main:'TOP',sub:'JUG',status:'waiting',excluded:false,inAuction:true},
+  {id:2,name:'대현',tier:'챌린저',main:'JUG',sub:'TOP',status:'waiting',excluded:false,inAuction:true},
+  {id:3,name:'준휘',tier:'마스터',main:'MID',sub:'ADC',status:'waiting',excluded:false,inAuction:true},
+  {id:4,name:'수민',tier:'에메랄드',main:'ADC',sub:'MID',status:'waiting',excluded:false,inAuction:true},
+  {id:5,name:'지훈',tier:'마스터',main:'SUP',sub:'JUG',status:'waiting',excluded:false,inAuction:true}
 ];
 
 function makeTeams(settings, old = []) {
@@ -138,12 +138,13 @@ function Auction({
   const [overlay,setOverlay]=useState(null);
 
 
-  const waiting=players.filter(p=>p.status==='waiting');
-  const current=players.find(p=>p.id===currentPlayerId);
-  const normalPool=players.filter(p=>p.status==='waiting'&&!p.excluded);
-  const unsoldPool=players.filter(p=>p.status==='unsold');
+  const auctionPlayers=players.filter(p=>p.inAuction!==false);
+  const waiting=auctionPlayers.filter(p=>p.status==='waiting');
+  const current=auctionPlayers.find(p=>p.id===currentPlayerId);
+  const normalPool=auctionPlayers.filter(p=>p.status==='waiting'&&!p.excluded);
+  const unsoldPool=auctionPlayers.filter(p=>p.status==='unsold');
   const roulettePool=rouletteMode==='unsold'?unsoldPool:normalPool;
-  const filteredPlayers=players.filter(p=>filter==='ALL'||p.main===filter);
+  const filteredPlayers=auctionPlayers.filter(p=>filter==='ALL'||p.main===filter);
 
   const pushEvent=(event)=>{
     const next={...event,id:Date.now()};
@@ -538,49 +539,95 @@ function Auction({
       </section>
 
       <footer className="arena-status-footer">
-        <span>전체 {players.length}명</span>
+        <span>경매 명단 {auctionPlayers.length}명</span>
         <span>대기 {waiting.length}명</span>
-        <span>낙찰 {players.filter(p=>p.status==='sold').length}명</span>
-        <span>유찰 {players.filter(p=>p.status==='unsold').length}명</span>
+        <span>낙찰 {auctionPlayers.filter(p=>p.status==='sold').length}명</span>
+        <span>유찰 {auctionPlayers.filter(p=>p.status==='unsold').length}명</span>
       </footer>
     </div>
   </>;
 }
 
-function Players({players,setPlayers,savePlayerSlot,loadPlayerSlot,playerSlots}) {
+function Players({players,setPlayers,savePlayerSlot,loadPlayerSlot,playerSlots,onApplyAuctionSelection}) {
   const [f,setF]=useState({name:'',tier:'마스터',main:'TOP',sub:'없음'});
+  const [slotName,setSlotName]=useState('제3회 관동지방컵 명단');
+  const [search,setSearch]=useState('');
+  const [selectionFilter,setSelectionFilter]=useState('ALL');
+  const [draftSelection,setDraftSelection]=useState(()=>new Set(players.filter(p=>p.inAuction!==false).map(p=>p.id)));
+
+  useEffect(()=>{
+    setDraftSelection(new Set(players.filter(p=>p.inAuction!==false).map(p=>p.id)));
+  },[players]);
+
   const add=()=>{
     if(!f.name.trim())return;
-    setPlayers(p=>[...p,{id:Date.now(),...f,status:'waiting',excluded:false,imageUrl:''}]);
+    setPlayers(p=>[...p,{id:Date.now(),...f,name:f.name.trim(),status:'waiting',excluded:false,inAuction:false,imageUrl:''}]);
     setF({name:'',tier:'마스터',main:'TOP',sub:'없음'});
   };
-  const [slotName,setSlotName]=useState('제3회 관동지방컵 명단');
+
+  const committedIds=new Set(players.filter(p=>p.inAuction!==false).map(p=>p.id));
+  const changed=players.some(p=>draftSelection.has(p.id)!==committedIds.has(p.id));
+  const selectedCount=draftSelection.size;
+  const toggle=(id)=>setDraftSelection(prev=>{const next=new Set(prev);next.has(id)?next.delete(id):next.add(id);return next});
+  const selectAll=()=>setDraftSelection(new Set(players.map(p=>p.id)));
+  const clearAll=()=>setDraftSelection(new Set());
+  const apply=()=>onApplyAuctionSelection?.([...draftSelection]);
+  const normalized=search.trim().toLowerCase();
+  const visible=players.filter(p=>{
+    const matchSearch=!normalized||p.name.toLowerCase().includes(normalized)||p.tier.toLowerCase().includes(normalized)||p.main.toLowerCase().includes(normalized)||(p.sub||'').toLowerCase().includes(normalized);
+    const selected=draftSelection.has(p.id);
+    const matchFilter=selectionFilter==='ALL'||(selectionFilter==='SELECTED'&&selected)||(selectionFilter==='UNSELECTED'&&!selected);
+    return matchSearch&&matchFilter;
+  });
+
   return <section className="panel full-panel">
-    <div className="panel-title"><div><span>PLAYER DATABASE</span><h2>선수 관리</h2></div><b>{players.length}명</b></div>
+    <div className="panel-title"><div><span>PLAYER DATABASE</span><h2>선수 관리</h2></div><b>{players.length}명 등록</b></div>
     <div className="slot-toolbar"><input value={slotName} onChange={e=>setSlotName(e.target.value)} placeholder="명단 슬롯 이름"/><button onClick={()=>savePlayerSlot(slotName)}>명단 저장</button><select onChange={e=>e.target.value&&loadPlayerSlot(e.target.value)} defaultValue=""><option value="">저장 명단 불러오기</option>{playerSlots.map(x=><option key={x.name} value={x.name}>{x.name} · {x.players.length}명</option>)}</select></div>
     <div className="player-form">
-      <input value={f.name} onChange={e=>setF({...f,name:e.target.value})} placeholder="선수 이름"/>
+      <input value={f.name} onChange={e=>setF({...f,name:e.target.value})} onKeyDown={e=>e.key==='Enter'&&add()} placeholder="선수 이름"/>
       <select value={f.tier} onChange={e=>setF({...f,tier:e.target.value})}>{TIERS.map(t=><option key={t}>{t}</option>)}</select>
       <select value={f.main} onChange={e=>setF({...f,main:e.target.value})}>{ROLES.map(r=><option key={r}>{r}</option>)}</select>
       <select value={f.sub} onChange={e=>setF({...f,sub:e.target.value})}><option>없음</option>{ROLES.map(r=><option key={r}>{r}</option>)}</select>
       <button className="primary-btn" onClick={add}>선수 추가</button>
     </div>
-    <div className="player-table">
-      <div className="table-head"><span>선수</span><span>티어</span><span>주라인</span><span>부라인</span><span>상태</span><span/></div>
-      {players.map(p=><div className="table-row" key={p.id}>
+
+    <div className="auction-selection-panel">
+      <div className="auction-selection-top">
+        <div><span>AUCTION ENTRY</span><h3>이번 경매 참가 선수 선택</h3><small>체크한 선수만 경매 화면과 전체목록에 표시됩니다.</small></div>
+        <strong>{selectedCount}명 선택 / {players.length}명 등록</strong>
+      </div>
+      <div className="auction-selection-controls">
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="선수 이름·티어·라인 검색"/>
+        <div className="selection-filter-buttons">
+          <button className={selectionFilter==='ALL'?'active':''} onClick={()=>setSelectionFilter('ALL')}>전체</button>
+          <button className={selectionFilter==='SELECTED'?'active':''} onClick={()=>setSelectionFilter('SELECTED')}>선택됨</button>
+          <button className={selectionFilter==='UNSELECTED'?'active':''} onClick={()=>setSelectionFilter('UNSELECTED')}>선택 안 됨</button>
+        </div>
+        <button onClick={selectAll}>전체 선택</button>
+        <button onClick={clearAll}>전체 해제</button>
+      </div>
+      {changed&&<div className="selection-change-notice"><span>선수 선택이 변경되었습니다.</span><button className="primary-btn" onClick={apply}>선택 선수 경매에 적용</button></div>}
+    </div>
+
+    <div className="player-table selectable-player-table">
+      <div className="table-head"><span>참가</span><span>선수</span><span>티어</span><span>주라인</span><span>부라인</span><span>상태</span><span/></div>
+      {visible.map(p=><div className={`table-row ${draftSelection.has(p.id)?'selected-for-auction':'not-selected'}`} key={p.id}>
+        <label className="auction-entry-check"><input type="checkbox" checked={draftSelection.has(p.id)} onChange={()=>toggle(p.id)}/><span/></label>
         <b>{p.name}</b><span>{p.tier}</span><span>{p.main}</span><span>{p.sub||'없음'}</span>
         <span className={`wait-tag ${p.status}`}>{p.status==='waiting'?'대기':p.status==='sold'?'낙찰':'유찰 매물'}</span>
         <div className="row-actions">
-          {p.status!=='waiting'&&<button onClick={()=>setPlayers(ps=>ps.map(x=>x.id===p.id?{...x,status:'waiting',excluded:false}:x))}>복구</button>}
-          <button onClick={()=>setPlayers(ps=>ps.filter(x=>x.id!==p.id))}>삭제</button>
+          {p.status!=='waiting'&&<button onClick={()=>setPlayers(ps=>ps.map(x=>x.id===p.id?{...x,status:'waiting',excluded:false,soldTeamId:null,soldPrice:null}:x))}>복구</button>}
+          <button onClick={()=>{if(confirm(`${p.name} 선수를 삭제할까요?`))setPlayers(ps=>ps.filter(x=>x.id!==p.id))}}>삭제</button>
         </div>
       </div>)}
+      {!visible.length&&<div className="selection-empty">조건에 맞는 선수가 없습니다.</div>}
     </div>
   </section>;
 }
 function FullPlayerList({players,teams,setActive,setCurrentPlayerId}){
   const [filter,setFilter]=useState('ALL');
-  const shown=players.filter(p=>filter==='ALL'||p.main===filter);
+  const auctionPlayers=players.filter(p=>p.inAuction!==false);
+  const shown=auctionPlayers.filter(p=>filter==='ALL'||p.main===filter);
   const choose=(p)=>{setCurrentPlayerId(p.id);setActive('auction')};
   return <section className="team-list-screen full-list-page">
     <div className="panel-title page-switch-title">
@@ -1019,12 +1066,26 @@ export default function Home(){
   const [livePrice,setLivePrice]=useState(0);
   const [liveTeamName,setLiveTeamName]=useState('');
   const [ready,setReady]=useState(false);
-  useEffect(()=>{try{const raw=localStorage.getItem(KEY);if(raw){const x=JSON.parse(raw);const s={...DEFAULT_SETTINGS,...x.settings};setSettings(s);setPlayers(x.players||DEFAULT_PLAYERS);setTeams(makeTeams(s,x.teams||[]));setRecent(x.recent||[]);setAuctionLog(x.auctionLog||[]);setCurrentPlayerId(x.currentPlayerId??null);const u=localStorage.getItem(UNDO_KEY);if(u)setUndoStack(JSON.parse(u));const ps=localStorage.getItem(PLAYER_SLOT_KEY);if(ps)setPlayerSlots(JSON.parse(ps));}}catch{}setReady(true)},[]);
+  useEffect(()=>{try{const raw=localStorage.getItem(KEY);if(raw){const x=JSON.parse(raw);const s={...DEFAULT_SETTINGS,...x.settings};setSettings(s);setPlayers((x.players||DEFAULT_PLAYERS).map(p=>({...p,inAuction:p.inAuction!==false})));setTeams(makeTeams(s,x.teams||[]));setRecent(x.recent||[]);setAuctionLog(x.auctionLog||[]);setCurrentPlayerId(x.currentPlayerId??null);const u=localStorage.getItem(UNDO_KEY);if(u)setUndoStack(JSON.parse(u));const ps=localStorage.getItem(PLAYER_SLOT_KEY);if(ps)setPlayerSlots(JSON.parse(ps));}}catch{}setReady(true)},[]);
   useEffect(()=>{if(ready)localStorage.setItem(KEY,JSON.stringify({settings,players,teams,recent,auctionLog,currentPlayerId,unsoldList}));localStorage.setItem(UNDO_KEY,JSON.stringify(undoStack));localStorage.setItem(PLAYER_SLOT_KEY,JSON.stringify(playerSlots));},[ready,settings,players,teams,recent,auctionLog,currentPlayerId,unsoldList,undoStack,playerSlots]);
 
   const savePlayerSlot=(name)=>{const n=(name||'새 명단').trim();const next=[{name:n,players:players.map(({soldTeamId,soldPrice,...p})=>({...p,status:'waiting',excluded:false})) ,savedAt:Date.now()},...playerSlots.filter(x=>x.name!==n)].slice(0,20);setPlayerSlots(next);alert(`명단 저장 완료: ${n}`)};
-  const loadPlayerSlot=(name)=>{const slot=playerSlots.find(x=>x.name===name);if(!slot)return;if(!confirm(`${name} 명단을 불러오면 현재 선수 목록이 교체됩니다. 계속할까요?`))return;setPlayers(slot.players.map(p=>({...p,status:'waiting',excluded:false,soldTeamId:null,soldPrice:null})));setTeams(makeTeams(settings));setRecent([]);setAuctionLog([]);setUnsoldList([]);setCurrentPlayerId(null)};
+  const loadPlayerSlot=(name)=>{const slot=playerSlots.find(x=>x.name===name);if(!slot)return;if(!confirm(`${name} 명단을 불러오면 현재 선수 목록이 교체됩니다. 계속할까요?`))return;setPlayers(slot.players.map(p=>({...p,inAuction:p.inAuction!==false,status:'waiting',excluded:false,soldTeamId:null,soldPrice:null})));setTeams(makeTeams(settings));setRecent([]);setAuctionLog([]);setUnsoldList([]);setCurrentPlayerId(null)};
   const resetAll=()=>{if(!confirm('정말 전체 초기화할까요? 선수 상태, 팀 배정, 포인트, 유찰, 로그가 모두 초기화됩니다.'))return;setPlayers(DEFAULT_PLAYERS);setTeams(makeTeams(settings));setRecent([]);setAuctionLog([]);setUnsoldList([]);setCurrentPlayerId(null);setUndoStack([])};
+
+  const applyAuctionSelection=(selectedIds=[])=>{
+    const selected=new Set(selectedIds);
+    const changedPlayers=players.filter(p=>selected.has(p.id)!==(p.inAuction!==false));
+    if(!changedPlayers.length)return;
+    const hasProgress=players.some(p=>p.status!=='waiting')||teams.some(t=>t.roster.length)||recent.length||unsoldList.length;
+    if(hasProgress){
+      const ok=confirm('경매가 진행된 상태에서 참가 명단을 바꾸면 현재 낙찰·유찰·팀 배정·포인트·로그가 초기화됩니다. 계속할까요?');
+      if(!ok)return;
+    }
+    setPlayers(ps=>ps.map(p=>({...p,inAuction:selected.has(p.id),status:'waiting',excluded:false,soldTeamId:null,soldPrice:null})));
+    if(hasProgress){setTeams(makeTeams(settings));setRecent([]);setAuctionLog([]);setUnsoldList([]);setCurrentPlayerId(null);setUndoStack([])}
+    alert(`경매 명단 적용 완료: ${selected.size}명`);
+  };
 
   const sharedState=()=>({settings,players,teams,recent,unsoldList,currentPlayerId,livePrice,liveTeamName,spectatorEvent});
   const onStateChanged=async(extra={})=>{if(!supabase||!roomStatus.connected||!roomStatus.adminKey)return;await supabase.rpc('update_auction_room',{p_room_code:roomStatus.roomCode,p_admin_key:roomStatus.adminKey,p_state:{...sharedState(),...extra},p_event:extra.spectatorEvent||spectatorEvent||null});};
@@ -1034,7 +1095,7 @@ export default function Home(){
       spectatorEvent={spectatorEvent} setSpectatorEvent={setSpectatorEvent} unsoldList={unsoldList} setUnsoldList={setUnsoldList} onStateChanged={onStateChanged} undoStack={undoStack} setUndoStack={setUndoStack} auctionLog={auctionLog} setAuctionLog={setAuctionLog}/>;
   if(active==='list')view=<FullPlayerList players={players} teams={teams} setActive={setActive} setCurrentPlayerId={setCurrentPlayerId}/>;
   if(active==='teams')view=<TeamList teams={teams} setActive={setActive}/>;
-  if(active==='players')view=<Players players={players} setPlayers={setPlayers} savePlayerSlot={savePlayerSlot} loadPlayerSlot={loadPlayerSlot} playerSlots={playerSlots}/>;
+  if(active==='players')view=<Players players={players} setPlayers={setPlayers} savePlayerSlot={savePlayerSlot} loadPlayerSlot={loadPlayerSlot} playerSlots={playerSlots} onApplyAuctionSelection={applyAuctionSelection}/>;
 
   if(active==='settings')view=<SettingsView settings={settings} setSettings={setSettings} teams={teams} setTeams={setTeams} onResetAll={resetAll}/>;
   return <AppShell active={active} setActive={setActive} settings={settings} roomStatus={roomStatus}>{view}</AppShell>;
