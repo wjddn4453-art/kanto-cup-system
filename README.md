@@ -33,3 +33,7 @@
 
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+
+
+## v4.0.5 변경 사항
+- 등록 선수 수와 관계없이 룰렛이 약 4~5초 안에 종료되도록 고정했습니다.

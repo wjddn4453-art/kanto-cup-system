@@ -13,7 +13,7 @@ const ROLES = ['TOP','JUG','MID','ADC','SUP'];
 const TIERS = ['챌린저','그랜드마스터','마스터','다이아몬드','에메랄드','플래티넘','골드','실버','브론즈','아이언'];
 const DEFAULT_SETTINGS = {
   title: '고추밭 내전', teamCount: 5,
-  sound: true, animation: true,
+  sound: true, animation: true, rouletteSeconds: 4.5,
   bidSteps: [10,20,50,100],
   teamNames: ['1팀','2팀','3팀','4팀','5팀'],
   teamPoints: [1000,1000,1000,1000,1000]
@@ -330,11 +330,15 @@ function Auction({
     setRouletteMode(mode);
     setView('board');
     setSpinning(true);
-    const total=Math.max(26, previewOrder.length*5);
+    // 설정한 시간에 맞춰 선수 수와 관계없이 동일한 길이로 진행됩니다.
+    const total=32;
+    const targetMs=Math.max(2000,Math.min(15000,Number(settings.rouletteSeconds||4.5)*1000));
+    const weights=Array.from({length:total},(_,i)=>0.55+2.45*Math.pow(i/Math.max(1,total-1),2));
+    const weightSum=weights.reduce((sum,value)=>sum+value,0);
     const timeline=[];
     for(let i=0;i<total;i++){
       const preview=i===total-1?picked:previewOrder[secureRandomIndex(previewOrder.length)];
-      timeline.push({id:preview.id,name:preview.name,delay:Math.min(300,55+(i+1)*8.5)});
+      timeline.push({id:preview.id,name:preview.name,delay:Math.max(35,Math.round(targetMs*weights[i]/weightSum))});
     }
     setRouletteItems(previewOrder);
     setRouletteStep(0);
@@ -936,7 +940,8 @@ function SettingsView({settings,setSettings,teams,setTeams,onResetAll}) {
       teamCount:d.teamNames.length,
       teamNames:d.teamNames.map((name,i)=>name.trim()||`${i+1}팀`),
       teamPoints:d.teamPoints.map(point=>Math.max(0,Number(point)||0)),
-      bidSteps:[...new Set(bids)].sort((a,b)=>a-b)
+      bidSteps:[...new Set(bids)].sort((a,b)=>a-b),
+      rouletteSeconds:Math.max(2,Math.min(15,Number(d.rouletteSeconds)||4.5))
     };
 
     setSettings(next);
@@ -964,6 +969,11 @@ function SettingsView({settings,setSettings,teams,setTeams,onResetAll}) {
       <label>
         <span>입찰 단위</span>
         <input value={steps} onChange={e=>setSteps(e.target.value)} placeholder="10,20,50,100"/>
+      </label>
+      <label>
+        <span>룰렛 시간 (초)</span>
+        <input type="number" min="2" max="15" step="0.5" value={d.rouletteSeconds??4.5} onChange={e=>setD({...d,rouletteSeconds:e.target.value})}/>
+        <small>2초~15초 · 선수 수와 관계없이 설정한 시간으로 진행</small>
       </label>
     </div>
 
