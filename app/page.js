@@ -2,12 +2,13 @@
 
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase/client';
-import { Users, Gavel, Dices, Settings, Eye, Trophy, UserRoundCog, RotateCcw, Save, History, Sparkles, Plus, Trash2, Maximize2, Wifi, WifiOff, KeyRound, List, Volume2, VolumeX } from 'lucide-react';
+import { Users, Gavel, Dices, Settings, Eye, Trophy, UserRoundCog, RotateCcw, Save, History, Sparkles, Plus, Trash2, Maximize2, Wifi, WifiOff, KeyRound, List, Volume2, VolumeX, Copy, LogOut, X, Link2 } from 'lucide-react';
 
 const KEY = 'gochubat-v02';
 const UNDO_KEY = 'gochubat-v02-undo';
 const PLAYER_SLOT_KEY = 'gochubat-v02-player-slots';
 const TOURNAMENT_SLOT_KEY = 'gochubat-v02-tournament-slots';
+const ROOM_SESSION_KEY = 'gochubat-online-room-v1';
 const ROLES = ['TOP','JUG','MID','ADC','SUP'];
 const TIERS = ['챌린저','그랜드마스터','마스터','다이아몬드','에메랄드','플래티넘','골드','실버','브론즈','아이언'];
 const DEFAULT_SETTINGS = {
@@ -64,7 +65,7 @@ function TournamentTitle({title='제3회 관동지방컵'}) {
   </span>;
 }
 
-function AppShell({active,setActive,settings,children}) {
+function AppShell({active,setActive,settings,children,roomStatus,onOpenRoom,onDisconnect,onCopyWatch,onCopyAdmin}) {
   const menu = [
     ['auction','경매 화면'],
     ['list','전체목록'],
@@ -82,9 +83,55 @@ function AppShell({active,setActive,settings,children}) {
         {menu.map(([id,label])=><button key={id} className={active===id?'active':''} onClick={()=>setActive(id)}>{label}</button>)}
       </nav>
     </header>
+    <div className={`room-toolbar ${roomStatus?.connected?'connected':''}`}>
+      <div className="room-toolbar-state">
+        {roomStatus?.connected?<Wifi size={16}/>:<WifiOff size={16}/>} 
+        <b>{roomStatus?.connected?`온라인 방 ${roomStatus.roomCode}`:'로컬 모드'}</b>
+        <span>{roomStatus?.connected?'다른 운영자·관전자와 실시간 동기화 중':'현재 기기에만 저장됩니다.'}</span>
+      </div>
+      <div className="room-toolbar-actions">
+        {roomStatus?.connected?<>
+          <button onClick={onCopyWatch}><Eye size={15}/> 관전자 링크 복사</button>
+          <button onClick={onCopyAdmin}><Copy size={15}/> 운영자 링크 복사</button>
+          <button className="danger-lite" onClick={onDisconnect}><LogOut size={15}/> 연결 해제</button>
+        </>:<button className="primary-room-btn" onClick={onOpenRoom}><Link2 size={15}/> 온라인 방 연결</button>}
+      </div>
+    </div>
     <section className="single-content">{children}</section>
   </main>;
 }
+
+function RoomDialog({open,onClose,onCreate,onJoin,loading,error}){
+  const [roomCode,setRoomCode]=useState('GOCHU1');
+  const [adminKey,setAdminKey]=useState('');
+  if(!open)return null;
+  return <div className="room-modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)onClose()}}>
+    <section className="room-modal">
+      <button className="room-modal-close" onClick={onClose}><X size={20}/></button>
+      <div className="room-modal-icon"><KeyRound size={28}/></div>
+      <span>ONLINE AUCTION ROOM</span>
+      <h2>온라인 운영 방 연결</h2>
+      <p>같은 방 코드와 운영 비밀번호를 입력한 사람은 다른 PC에서도 경매를 이어서 조작할 수 있습니다.</p>
+      <label><b>방 코드</b><input value={roomCode} maxLength={20} onChange={e=>setRoomCode(e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g,''))} placeholder="예: KANTO3"/></label>
+      <label><b>운영 비밀번호</b><input type="password" value={adminKey} onChange={e=>setAdminKey(e.target.value)} placeholder="운영자끼리 공유할 비밀번호"/></label>
+      {error&&<div className="room-error">{error}</div>}
+      <div className="room-modal-actions">
+        <button disabled={loading||!roomCode||adminKey.length<4} onClick={()=>onJoin(roomCode,adminKey)}><Wifi size={16}/> 기존 방 접속</button>
+        <button className="primary-btn" disabled={loading||!roomCode||adminKey.length<4} onClick={()=>onCreate(roomCode,adminKey)}><Plus size={16}/> 새 방 만들기</button>
+      </div>
+      <small>운영 비밀번호는 최소 4자입니다. 관전자는 비밀번호 없이 관전자 링크로 접속합니다.</small>
+    </section>
+  </div>;
+}
+
+function WatchConnection({roomCode,status,error}){
+  return <div className="watch-connection-badge">
+    {status==='connected'?<Wifi size={15}/>:<WifiOff size={15}/>} 
+    <b>{status==='connected'?`${roomCode} 실시간 관전`:'관전자 연결 중'}</b>
+    {error&&<span>{error}</span>}
+  </div>;
+}
+
 function playUiSound(kind, enabled = true) {
   if (!enabled || typeof window === 'undefined') return;
   try {
@@ -874,9 +921,10 @@ function Watch({
   livePrice,liveTeamName,spectatorEvent,unsoldList
 }) {
   const current=players.find(p=>p.id===currentPlayerId);
-  const completed=players.filter(p=>p.status!=='waiting').length;
-  const total=players.length;
-  const waiting=players.filter(p=>p.status==='waiting').length;
+  const activePlayers=players.filter(p=>p.inAuction!==false);
+  const completed=activePlayers.filter(p=>p.status!=='waiting').length;
+  const total=activePlayers.length;
+  const waiting=activePlayers.filter(p=>p.status==='waiting').length;
 
   const [rouletteActive,setRouletteActive]=useState(false);
   const [rouletteDisplay,setRouletteDisplay]=useState('대기 중');
@@ -1051,6 +1099,14 @@ function Presentation({settings,teams,players,recent,currentPlayerId,livePrice,l
 
 export default function Home(){
   const [active,setActive]=useState('auction');
+  const [pageMode,setPageMode]=useState('admin');
+  const [watchRoom,setWatchRoom]=useState('');
+  const [roomDialog,setRoomDialog]=useState(false);
+  const [roomBusy,setRoomBusy]=useState(false);
+  const [roomError,setRoomError]=useState('');
+  const [syncError,setSyncError]=useState('');
+  const applyingRemoteRef=useRef(false);
+  const syncReadyRef=useRef(false);
   useEffect(()=>{const fn=()=>setActive('teams');window.addEventListener('go-team-list',fn);return()=>window.removeEventListener('go-team-list',fn)},[]);
   const [settings,setSettings]=useState(DEFAULT_SETTINGS);
   const [players,setPlayers]=useState(DEFAULT_PLAYERS);
@@ -1062,12 +1118,24 @@ export default function Home(){
   const [currentPlayerId,setCurrentPlayerId]=useState(null);
   const [spectatorEvent,setSpectatorEvent]=useState(null);
   const [unsoldList,setUnsoldList]=useState([]);
-  const [roomStatus,setRoomStatus]=useState({connected:false,roomCode:'GOCHU1',adminKey:''});
+  const [roomStatus,setRoomStatus]=useState({connected:false,roomCode:'',adminKey:'',role:'local'});
   const [livePrice,setLivePrice]=useState(0);
   const [liveTeamName,setLiveTeamName]=useState('');
   const [ready,setReady]=useState(false);
-  useEffect(()=>{try{const raw=localStorage.getItem(KEY);if(raw){const x=JSON.parse(raw);const s={...DEFAULT_SETTINGS,...x.settings};setSettings(s);setPlayers((x.players||DEFAULT_PLAYERS).map(p=>({...p,inAuction:p.inAuction!==false})));setTeams(makeTeams(s,x.teams||[]));setRecent(x.recent||[]);setAuctionLog(x.auctionLog||[]);setCurrentPlayerId(x.currentPlayerId??null);const u=localStorage.getItem(UNDO_KEY);if(u)setUndoStack(JSON.parse(u));const ps=localStorage.getItem(PLAYER_SLOT_KEY);if(ps)setPlayerSlots(JSON.parse(ps));}}catch{}setReady(true)},[]);
-  useEffect(()=>{if(ready)localStorage.setItem(KEY,JSON.stringify({settings,players,teams,recent,auctionLog,currentPlayerId,unsoldList}));localStorage.setItem(UNDO_KEY,JSON.stringify(undoStack));localStorage.setItem(PLAYER_SLOT_KEY,JSON.stringify(playerSlots));},[ready,settings,players,teams,recent,auctionLog,currentPlayerId,unsoldList,undoStack,playerSlots]);
+
+  useEffect(()=>{
+    const params=new URLSearchParams(window.location.search);
+    const mode=params.get('mode');
+    const room=(params.get('room')||'').toUpperCase();
+    if(mode==='watch'&&room){
+      setPageMode('watch');setWatchRoom(room);setRoomStatus({connected:true,roomCode:room,adminKey:'',role:'watch'});
+    }else{
+      try{const saved=JSON.parse(sessionStorage.getItem(ROOM_SESSION_KEY)||'null');if(saved?.roomCode&&saved?.adminKey)setRoomStatus({connected:true,roomCode:saved.roomCode,adminKey:saved.adminKey,role:'admin'});}catch{}
+    }
+    try{const raw=localStorage.getItem(KEY);if(raw){const x=JSON.parse(raw);const st={...DEFAULT_SETTINGS,...x.settings};setSettings(st);setPlayers((x.players||DEFAULT_PLAYERS).map(p=>({...p,inAuction:p.inAuction!==false})));setTeams(makeTeams(st,x.teams||[]));setRecent(x.recent||[]);setAuctionLog(x.auctionLog||[]);setCurrentPlayerId(x.currentPlayerId??null);setUnsoldList(x.unsoldList||[]);const u=localStorage.getItem(UNDO_KEY);if(u)setUndoStack(JSON.parse(u));const ps=localStorage.getItem(PLAYER_SLOT_KEY);if(ps)setPlayerSlots(JSON.parse(ps));}}catch{}
+    setReady(true)
+  },[]);
+  useEffect(()=>{if(ready&&pageMode==='admin')localStorage.setItem(KEY,JSON.stringify({settings,players,teams,recent,auctionLog,currentPlayerId,unsoldList}));localStorage.setItem(UNDO_KEY,JSON.stringify(undoStack));localStorage.setItem(PLAYER_SLOT_KEY,JSON.stringify(playerSlots));},[ready,pageMode,settings,players,teams,recent,auctionLog,currentPlayerId,unsoldList,undoStack,playerSlots]);
 
   const savePlayerSlot=(name)=>{const n=(name||'새 명단').trim();const next=[{name:n,players:players.map(({soldTeamId,soldPrice,...p})=>({...p,status:'waiting',excluded:false})) ,savedAt:Date.now()},...playerSlots.filter(x=>x.name!==n)].slice(0,20);setPlayerSlots(next);alert(`명단 저장 완료: ${n}`)};
   const loadPlayerSlot=(name)=>{const slot=playerSlots.find(x=>x.name===name);if(!slot)return;if(!confirm(`${name} 명단을 불러오면 현재 선수 목록이 교체됩니다. 계속할까요?`))return;setPlayers(slot.players.map(p=>({...p,inAuction:p.inAuction!==false,status:'waiting',excluded:false,soldTeamId:null,soldPrice:null})));setTeams(makeTeams(settings));setRecent([]);setAuctionLog([]);setUnsoldList([]);setCurrentPlayerId(null)};
@@ -1078,25 +1146,78 @@ export default function Home(){
     const changedPlayers=players.filter(p=>selected.has(p.id)!==(p.inAuction!==false));
     if(!changedPlayers.length)return;
     const hasProgress=players.some(p=>p.status!=='waiting')||teams.some(t=>t.roster.length)||recent.length||unsoldList.length;
-    if(hasProgress){
-      const ok=confirm('경매가 진행된 상태에서 참가 명단을 바꾸면 현재 낙찰·유찰·팀 배정·포인트·로그가 초기화됩니다. 계속할까요?');
-      if(!ok)return;
-    }
+    if(hasProgress){const ok=confirm('경매가 진행된 상태에서 참가 명단을 바꾸면 현재 낙찰·유찰·팀 배정·포인트·로그가 초기화됩니다. 계속할까요?');if(!ok)return;}
     setPlayers(ps=>ps.map(p=>({...p,inAuction:selected.has(p.id),status:'waiting',excluded:false,soldTeamId:null,soldPrice:null})));
     if(hasProgress){setTeams(makeTeams(settings));setRecent([]);setAuctionLog([]);setUnsoldList([]);setCurrentPlayerId(null);setUndoStack([])}
     alert(`경매 명단 적용 완료: ${selected.size}명`);
   };
 
-  const sharedState=()=>({settings,players,teams,recent,unsoldList,currentPlayerId,livePrice,liveTeamName,spectatorEvent});
-  const onStateChanged=async(extra={})=>{if(!supabase||!roomStatus.connected||!roomStatus.adminKey)return;await supabase.rpc('update_auction_room',{p_room_code:roomStatus.roomCode,p_admin_key:roomStatus.adminKey,p_state:{...sharedState(),...extra},p_event:extra.spectatorEvent||spectatorEvent||null});};
-  useEffect(()=>{if(!supabase||!roomStatus.connected)return;let ch;(async()=>{const {data}=await supabase.from('auction_rooms').select('state').eq('room_code',roomStatus.roomCode).maybeSingle();if(data?.state){const x=data.state;if(x.settings)setSettings(x.settings);if(x.players)setPlayers(x.players);if(x.teams)setTeams(x.teams);if(x.recent)setRecent(x.recent);if(x.unsoldList)setUnsoldList(x.unsoldList);if('currentPlayerId'in x)setCurrentPlayerId(x.currentPlayerId)}ch=supabase.channel('room-'+roomStatus.roomCode).on('postgres_changes',{event:'UPDATE',schema:'public',table:'auction_rooms',filter:`room_code=eq.${roomStatus.roomCode}`},({new:n})=>{const x=n.state||{};if(x.settings)setSettings(x.settings);if(x.players)setPlayers(x.players);if(x.teams)setTeams(x.teams);if(x.recent)setRecent(x.recent);if(x.unsoldList)setUnsoldList(x.unsoldList);if('currentPlayerId'in x)setCurrentPlayerId(x.currentPlayerId);if(x.spectatorEvent)setSpectatorEvent(x.spectatorEvent);if('livePrice'in x)setLivePrice(x.livePrice||0);if('liveTeamName'in x)setLiveTeamName(x.liveTeamName||'')}).subscribe()})();return()=>{if(ch)supabase.removeChannel(ch)}},[roomStatus.connected,roomStatus.roomCode]);
+  const sharedState=()=>({settings,players,teams,recent,auctionLog,unsoldList,currentPlayerId,livePrice,liveTeamName,spectatorEvent});
+  const applyRemoteState=(x={})=>{
+    applyingRemoteRef.current=true;
+    if(x.settings)setSettings(x.settings);if(x.players)setPlayers(x.players);if(x.teams)setTeams(x.teams);if(x.recent)setRecent(x.recent);if(x.auctionLog)setAuctionLog(x.auctionLog);if(x.unsoldList)setUnsoldList(x.unsoldList);if('currentPlayerId'in x)setCurrentPlayerId(x.currentPlayerId);if('spectatorEvent'in x)setSpectatorEvent(x.spectatorEvent);if('livePrice'in x)setLivePrice(x.livePrice||0);if('liveTeamName'in x)setLiveTeamName(x.liveTeamName||'');
+    setTimeout(()=>{applyingRemoteRef.current=false},350);
+  };
+  const onStateChanged=async(extra={})=>{
+    if(!supabase||!roomStatus.connected||roomStatus.role!=='admin'||!roomStatus.adminKey)return;
+    const next={...sharedState(),...extra};
+    const {error}=await supabase.rpc('update_auction_room',{p_room_code:roomStatus.roomCode,p_admin_key:roomStatus.adminKey,p_state:next,p_event:extra.spectatorEvent||spectatorEvent||null});
+    if(error)setSyncError(error.message||'동기화 실패');
+  };
+
+  useEffect(()=>{
+    if(!supabase||!roomStatus.connected)return;
+    let ch;let alive=true;syncReadyRef.current=false;setSyncError('');
+    (async()=>{
+      const {data,error}=await supabase.from('auction_rooms').select('state').eq('room_code',roomStatus.roomCode).maybeSingle();
+      if(!alive)return;
+      if(error||!data){setSyncError(pageMode==='watch'?'존재하지 않는 관전자 방입니다.':'온라인 방을 불러오지 못했습니다.');return;}
+      applyRemoteState(data.state||{});syncReadyRef.current=true;
+      ch=supabase.channel(`room-${roomStatus.roomCode}-${Math.random()}`).on('postgres_changes',{event:'UPDATE',schema:'public',table:'auction_rooms',filter:`room_code=eq.${roomStatus.roomCode}`},({new:n})=>applyRemoteState(n.state||{})).subscribe(status=>{if(status==='CHANNEL_ERROR')setSyncError('실시간 연결이 끊겼습니다.')});
+    })();
+    return()=>{alive=false;syncReadyRef.current=false;if(ch)supabase.removeChannel(ch)};
+  },[roomStatus.connected,roomStatus.roomCode,pageMode]);
+
+  useEffect(()=>{
+    if(!ready||!supabase||!roomStatus.connected||roomStatus.role!=='admin'||!roomStatus.adminKey||!syncReadyRef.current||applyingRemoteRef.current)return;
+    const timer=setTimeout(()=>onStateChanged(),220);
+    return()=>clearTimeout(timer);
+  },[ready,roomStatus.connected,roomStatus.role,roomStatus.roomCode,roomStatus.adminKey,settings,players,teams,recent,auctionLog,unsoldList,currentPlayerId,livePrice,liveTeamName]);
+
+  const createRoom=async(code,key)=>{
+    if(!supabase)return setRoomError('Supabase 환경 변수가 설정되지 않았습니다.');
+    setRoomBusy(true);setRoomError('');
+    const roomCode=code.trim().toUpperCase();
+    const {error}=await supabase.rpc('create_auction_room',{p_room_code:roomCode,p_admin_key:key,p_state:sharedState()});
+    setRoomBusy(false);
+    if(error){setRoomError(error.message?.includes('duplicate')?'이미 존재하는 방 코드입니다. 기존 방 접속을 눌러주세요.':error.message);return;}
+    const next={connected:true,roomCode,adminKey:key,role:'admin'};setRoomStatus(next);sessionStorage.setItem(ROOM_SESSION_KEY,JSON.stringify({roomCode,adminKey:key}));setRoomDialog(false);
+  };
+  const joinRoom=async(code,key)=>{
+    if(!supabase)return setRoomError('Supabase 환경 변수가 설정되지 않았습니다.');
+    setRoomBusy(true);setRoomError('');const roomCode=code.trim().toUpperCase();
+    const {data,error}=await supabase.rpc('verify_auction_room',{p_room_code:roomCode,p_admin_key:key});
+    setRoomBusy(false);
+    if(error){setRoomError(error.message);return;}if(!data){setRoomError('방 코드 또는 운영 비밀번호가 올바르지 않습니다.');return;}
+    const next={connected:true,roomCode,adminKey:key,role:'admin'};setRoomStatus(next);sessionStorage.setItem(ROOM_SESSION_KEY,JSON.stringify({roomCode,adminKey:key}));setRoomDialog(false);
+  };
+  const disconnectRoom=()=>{if(!confirm('온라인 방 연결을 해제하고 로컬 모드로 돌아갈까요? 방 데이터는 삭제되지 않습니다.'))return;sessionStorage.removeItem(ROOM_SESSION_KEY);setRoomStatus({connected:false,roomCode:'',adminKey:'',role:'local'});syncReadyRef.current=false;};
+  const copyText=async(text,msg)=>{try{await navigator.clipboard.writeText(text);alert(msg)}catch{prompt('아래 주소를 복사하세요.',text)}};
+  const watchUrl=()=>`${window.location.origin}${window.location.pathname}?mode=watch&room=${encodeURIComponent(roomStatus.roomCode)}`;
+  const adminUrl=()=>`${window.location.origin}${window.location.pathname}?room=${encodeURIComponent(roomStatus.roomCode)}`;
+
+  if(pageMode==='watch')return <main className="watch-standalone"><WatchConnection roomCode={watchRoom} status={syncError?'error':'connected'} error={syncError}/><Watch settings={settings} teams={teams} players={players.filter(p=>p.inAuction!==false)} recent={recent} currentPlayerId={currentPlayerId} livePrice={livePrice} liveTeamName={liveTeamName} spectatorEvent={spectatorEvent} unsoldList={unsoldList}/></main>;
 
   let view=<Auction players={players} setPlayers={setPlayers} teams={teams} setTeams={setTeams} settings={settings} recent={recent} setRecent={setRecent} currentPlayerId={currentPlayerId} setCurrentPlayerId={setCurrentPlayerId}
       spectatorEvent={spectatorEvent} setSpectatorEvent={setSpectatorEvent} unsoldList={unsoldList} setUnsoldList={setUnsoldList} onStateChanged={onStateChanged} undoStack={undoStack} setUndoStack={setUndoStack} auctionLog={auctionLog} setAuctionLog={setAuctionLog}/>;
   if(active==='list')view=<FullPlayerList players={players} teams={teams} setActive={setActive} setCurrentPlayerId={setCurrentPlayerId}/>;
   if(active==='teams')view=<TeamList teams={teams} setActive={setActive}/>;
   if(active==='players')view=<Players players={players} setPlayers={setPlayers} savePlayerSlot={savePlayerSlot} loadPlayerSlot={loadPlayerSlot} playerSlots={playerSlots} onApplyAuctionSelection={applyAuctionSelection}/>;
-
   if(active==='settings')view=<SettingsView settings={settings} setSettings={setSettings} teams={teams} setTeams={setTeams} onResetAll={resetAll}/>;
-  return <AppShell active={active} setActive={setActive} settings={settings} roomStatus={roomStatus}>{view}</AppShell>;
+  return <>
+    <AppShell active={active} setActive={setActive} settings={settings} roomStatus={roomStatus} onOpenRoom={()=>{setRoomError('');setRoomDialog(true)}} onDisconnect={disconnectRoom} onCopyWatch={()=>copyText(watchUrl(),'관전자 링크를 복사했습니다.')} onCopyAdmin={()=>copyText(adminUrl(),'운영자 접속 주소를 복사했습니다. 비밀번호는 따로 전달하세요.')}>{view}</AppShell>
+    <RoomDialog open={roomDialog} onClose={()=>setRoomDialog(false)} onCreate={createRoom} onJoin={joinRoom} loading={roomBusy} error={roomError}/>
+    {syncError&&roomStatus.connected&&<div className="sync-error-toast">{syncError}</div>}
+  </>;
 }
+

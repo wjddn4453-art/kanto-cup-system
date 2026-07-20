@@ -51,3 +51,12 @@ create table if not exists bids (
   amount integer not null,
   created_at timestamptz not null default now()
 );
+
+create or replace function public.verify_auction_room(p_room_code text,p_admin_key text) returns boolean language plpgsql security definer set search_path=public as $$
+declare h text;
+begin
+  select admin_key_hash into h from public.auction_rooms where room_code=upper(trim(p_room_code));
+  return h is not null and crypt(p_admin_key,h)=h;
+end;
+$$;
+grant execute on function public.verify_auction_room(text,text) to anon,authenticated;
