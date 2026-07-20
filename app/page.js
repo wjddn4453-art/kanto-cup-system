@@ -147,7 +147,7 @@ function RoomLobby({open,onClose,rooms,loading,error,onRefresh,onCreate,onJoin,o
         {filtered.map(r=>{const [label,cls]=statusOf(r);const st=r.state||{};const playerCount=(st.players||[]).filter(p=>p.inAuction!==false).length;const teamCount=(st.teams||[]).length||st.settings?.teamCount||0;return <article className="room-directory-card" key={r.room_code}>
           <div className="room-code-badge">{r.room_code.slice(0,3)}</div>
           <div className="room-directory-info"><div><b>{r.room_code}</b><span className={`room-state ${cls}`}>{label}</span></div><h3>{r.title||'이름 없는 경매방'}</h3><p>{teamCount}팀 · 선수 {playerCount}명 · 최근 저장 {new Date(r.updated_at).toLocaleString('ko-KR')}</p></div>
-          <div className="room-directory-actions"><button className="primary-btn" onClick={()=>onJoin(r.room_code)}>접속</button><button onClick={()=>onClone(r)}>복제</button><button className="danger-lite" onClick={()=>onDelete(r.room_code)}>삭제</button></div>
+          <div className="room-directory-actions"><button className="primary-btn" onClick={()=>onJoin(r.room_code)}>접속</button><button className="room-clone-btn" onClick={()=>onClone(r)}>복제</button><button className="room-delete-btn" onClick={()=>onDelete(r.room_code)}>삭제</button></div>
         </article>})}
         {!loading&&!filtered.length&&<div className="room-directory-empty">표시할 방이 없습니다. 새 방을 만들어주세요.</div>}
         {loading&&<div className="room-directory-empty">방 목록을 불러오는 중...</div>}
@@ -704,7 +704,7 @@ function Auction({
   </>;
 }
 
-function Players({players,setPlayers,savePlayerSlot,loadPlayerSlot,playerSlots,onApplyAuctionSelection}) {
+function Players({players,setPlayers,savePlayerSlot,loadPlayerSlot,playerSlots,onApplyAuctionSelection,onRecoverPlayer}) {
   const [f,setF]=useState({name:'',tier:'마스터',main:'TOP',sub:'없음'});
   const [slotName,setSlotName]=useState('제3회 관동지방컵 명단');
   const [search,setSearch]=useState('');
@@ -780,7 +780,7 @@ function Players({players,setPlayers,savePlayerSlot,loadPlayerSlot,playerSlots,o
         <b>{p.name}</b><span>{p.tier}</span><span>{p.main}</span><span>{p.sub||'없음'}</span>
         <span className={`wait-tag ${p.status}`}>{p.status==='waiting'?'대기':p.status==='sold'?'낙찰':'유찰 매물'}</span>
         <div className="row-actions">
-          {p.status!=='waiting'&&<button onClick={()=>setPlayers(ps=>ps.map(x=>x.id===p.id?{...x,status:'waiting',excluded:false,soldTeamId:null,soldPrice:null}:x))}>복구</button>}
+          {p.status!=='waiting'&&<button onClick={()=>onRecoverPlayer?.(p)}>복구</button>}
           <button onClick={()=>{if(confirm(`${p.name} 선수를 삭제할까요?`))setPlayers(ps=>ps.filter(x=>x.id!==p.id))}}>삭제</button>
         </div>
       </div>)}
@@ -1266,6 +1266,33 @@ export default function Home(){
   const loadPlayerSlot=(name)=>{const slot=playerSlots.find(x=>x.name===name);if(!slot)return;if(!confirm(`${name} 명단을 불러오면 현재 선수 목록이 교체됩니다. 계속할까요?`))return;setPlayers(slot.players.map(p=>({...p,inAuction:p.inAuction!==false,status:'waiting',excluded:false,soldTeamId:null,soldPrice:null})));setTeams(makeTeams(settings));setRecent([]);setAuctionLog([]);setUnsoldList([]);setCurrentPlayerId(null)};
   const resetAll=()=>{if(!confirm('정말 전체 초기화할까요? 선수 상태, 팀 배정, 포인트, 유찰, 로그가 모두 초기화됩니다.'))return;setPlayers(DEFAULT_PLAYERS);setTeams(makeTeams(settings));setRecent([]);setAuctionLog([]);setUnsoldList([]);setCurrentPlayerId(null);setUndoStack([])};
 
+  const recoverPlayer=(player)=>{
+    if(!player||player.status==='waiting')return;
+    const wasSold=player.status==='sold';
+    const message=wasSold
+      ? `${player.name} 선수의 낙찰을 복구할까요?\n팀 명단에서 제거되고 사용한 포인트도 반환됩니다.`
+      : `${player.name} 선수의 유찰 상태를 복구할까요?`;
+    if(!confirm(message))return;
+
+    setTeams(ts=>ts.map(team=>{
+      const removed=team.roster.filter(member=>member.id===player.id);
+      if(!removed.length)return team;
+      const refund=removed.reduce((sum,member)=>sum+Math.max(0,Number(member.price)||0),0);
+      return {...team,points:team.points+refund,roster:team.roster.filter(member=>member.id!==player.id)};
+    }));
+    setPlayers(ps=>ps.map(p=>p.id===player.id?{
+      ...p,status:'waiting',excluded:false,soldTeamId:null,soldPrice:null
+    }:p));
+    setRecent(rs=>rs.filter(item=>item.player!==player.name));
+    setUnsoldList(us=>us.filter(item=>item.player!==player.name));
+    setCurrentPlayerId(id=>id===player.id?null:id);
+    setAuctionLog(log=>[{
+      id:Date.now(),type:'restore',
+      text:`선수 관리 복구 · ${player.name}${wasSold?' 낙찰 취소 및 포인트 반환':' 유찰 취소'}`,
+      time:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})
+    },...log].slice(0,100));
+  };
+
   const applyAuctionSelection=(selectedIds=[])=>{
     const selected=new Set(selectedIds);
     const changedPlayers=players.filter(p=>selected.has(p.id)!==(p.inAuction!==false));
@@ -1391,7 +1418,7 @@ export default function Home(){
       spectatorEvent={spectatorEvent} setSpectatorEvent={setSpectatorEvent} unsoldList={unsoldList} setUnsoldList={setUnsoldList} onStateChanged={onStateChanged} undoStack={undoStack} setUndoStack={setUndoStack} auctionLog={auctionLog} setAuctionLog={setAuctionLog}/>;
   if(active==='list')view=<FullPlayerList players={players} teams={teams} setActive={setActive} setCurrentPlayerId={setCurrentPlayerId}/>;
   if(active==='teams')view=<TeamList teams={teams} setActive={setActive}/>;
-  if(active==='players')view=<Players players={players} setPlayers={setPlayers} savePlayerSlot={savePlayerSlot} loadPlayerSlot={loadPlayerSlot} playerSlots={playerSlots} onApplyAuctionSelection={applyAuctionSelection}/>;
+  if(active==='players')view=<Players players={players} setPlayers={setPlayers} savePlayerSlot={savePlayerSlot} loadPlayerSlot={loadPlayerSlot} playerSlots={playerSlots} onApplyAuctionSelection={applyAuctionSelection} onRecoverPlayer={recoverPlayer}/>;
   if(active==='settings')view=<SettingsView settings={settings} setSettings={setSettings} teams={teams} setTeams={setTeams} onResetAll={resetAll}/>;
   return <>
     <AppShell active={active} setActive={setActive} settings={settings} roomStatus={roomStatus} onOpenRoom={()=>{setRoomError('');setRoomDialog(true)}} onOpenLobby={()=>setRoomLobby(true)} onDisconnect={disconnectRoom} onDeleteRoom={deleteRoom} onCopyAdmin={()=>copyText(adminUrl(),'운영자 접속 주소를 복사했습니다. 비밀번호는 따로 전달하세요.')}>{view}</AppShell>
