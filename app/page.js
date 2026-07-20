@@ -4,15 +4,15 @@ import { useEffect, useMemo, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { Users, Gavel, Dices, Settings, Trophy, UserRoundCog, RotateCcw, Save, History, Sparkles, Plus, Trash2, Maximize2, Wifi, WifiOff, KeyRound, List, Volume2, VolumeX, Copy, LogOut, X, Link2 } from 'lucide-react';
 
-const KEY = 'gochubat-v02';
-const UNDO_KEY = 'gochubat-v02-undo';
-const PLAYER_SLOT_KEY = 'gochubat-v02-player-slots';
-const TOURNAMENT_SLOT_KEY = 'gochubat-v02-tournament-slots';
-const ROOM_SESSION_KEY = 'gochubat-online-room-v1';
+const KEY = 'gochubat-v404';
+const UNDO_KEY = 'gochubat-v404-undo';
+const PLAYER_SLOT_KEY = 'gochubat-v404-player-slots';
+const TOURNAMENT_SLOT_KEY = 'gochubat-v404-tournament-slots';
+const ROOM_SESSION_KEY = 'gochubat-temporary-room-v2';
 const ROLES = ['TOP','JUG','MID','ADC','SUP'];
 const TIERS = ['챌린저','그랜드마스터','마스터','다이아몬드','에메랄드','플래티넘','골드','실버','브론즈','아이언'];
 const DEFAULT_SETTINGS = {
-  title: '제3회 관동지방컵', teamCount: 5,
+  title: '고추밭 내전', teamCount: 5,
   sound: true, animation: true,
   bidSteps: [10,20,50,100],
   teamNames: ['1팀','2팀','3팀','4팀','5팀'],
@@ -35,13 +35,7 @@ function averageTier(roster=[]){
   return Object.entries(TIER_SCORE).sort((a,b)=>Math.abs(a[1]-avg)-Math.abs(b[1]-avg))[0]?.[0]||'미정';
 }
 
-const DEFAULT_PLAYERS = [
-  {id:1,name:'정우',tier:'마스터',main:'TOP',sub:'JUG',status:'waiting',excluded:false,inAuction:true},
-  {id:2,name:'대현',tier:'챌린저',main:'JUG',sub:'TOP',status:'waiting',excluded:false,inAuction:true},
-  {id:3,name:'준휘',tier:'마스터',main:'MID',sub:'ADC',status:'waiting',excluded:false,inAuction:true},
-  {id:4,name:'수민',tier:'에메랄드',main:'ADC',sub:'MID',status:'waiting',excluded:false,inAuction:true},
-  {id:5,name:'지훈',tier:'마스터',main:'SUP',sub:'JUG',status:'waiting',excluded:false,inAuction:true}
-];
+const DEFAULT_PLAYERS = [];
 
 function makeTeams(settings, old = []) {
   return Array.from({length: settings.teamCount}, (_, i) => ({
@@ -54,7 +48,7 @@ function makeTeams(settings, old = []) {
 }
 
 
-function TournamentTitle({title='제3회 관동지방컵'}) {
+function TournamentTitle({title='고추밭 내전'}) {
   const match = String(title).match(/^(제)(\d+)(회)(.*)$/);
   if (!match) return <span className="tournament-title-text">{title}</span>;
   return <span className="tournament-title-text" aria-label={title}>
@@ -77,7 +71,7 @@ function AppShell({active,setActive,settings,children,roomStatus,onOpenRoom,onOp
     <header className="single-topbar">
       <div className="single-brand">
         <div className="single-ball"><span>G</span></div>
-        <div><small>GOCHUBAT MONSTER DRAFT</small><h1><TournamentTitle title={settings.title}/></h1></div>
+        <div><small>고추밭 내전 경매 시스템</small><h1><TournamentTitle title={settings.title}/></h1></div>
       </div>
       <nav className="single-nav">
         {menu.map(([id,label])=><button key={id} className={active===id?'active':''} onClick={()=>setActive(id)}>{label}</button>)}
@@ -86,16 +80,16 @@ function AppShell({active,setActive,settings,children,roomStatus,onOpenRoom,onOp
     <div className={`room-toolbar ${roomStatus?.connected?'connected':''}`}>
       <div className="room-toolbar-state">
         {roomStatus?.connected?<Wifi size={16}/>:<WifiOff size={16}/>} 
-        <b>{roomStatus?.connected?`온라인 방 ${roomStatus.roomCode}`:'로컬 모드'}</b>
-        <span>{roomStatus?.connected?'같은 방의 운영자들과 실시간 동기화 중':'현재 기기에만 저장됩니다.'}</span>
+        <b>{roomStatus?.connected?`임시 작업방 ${roomStatus.roomCode}`:'작업방 미연결'}</b>
+        <span>{roomStatus?.connected?'같은 비밀번호로 접속한 사용자와 실시간 동기화 중':'새 작업방을 만들거나 기존 작업방에 접속하세요.'}</span>
       </div>
       <div className="room-toolbar-actions">
         <button onClick={onOpenLobby}><List size={15}/> 방 목록</button>
         {roomStatus?.connected?<>
-          <button onClick={onCopyAdmin}><Copy size={15}/> 운영자 링크 복사</button>
+          <button onClick={onCopyAdmin}><Copy size={15}/> 접속 링크 복사</button>
           <button className="danger-lite" onClick={onDeleteRoom}><Trash2 size={15}/> 방 삭제</button>
           <button className="danger-lite" onClick={onDisconnect}><LogOut size={15}/> 연결 해제</button>
-        </>:<button className="primary-room-btn" onClick={onOpenRoom}><Link2 size={15}/> 온라인 방 연결</button>}
+        </>:<button className="primary-room-btn" onClick={onOpenRoom}><Link2 size={15}/> 작업방 시작</button>}
       </div>
     </div>
     <section className="single-content">{children}</section>
@@ -111,17 +105,17 @@ function RoomDialog({open,onClose,onCreate,onJoin,loading,error,defaultCode=''})
     <section className="room-modal">
       <button className="room-modal-close" onClick={onClose}><X size={20}/></button>
       <div className="room-modal-icon"><KeyRound size={28}/></div>
-      <span>ONLINE AUCTION ROOM</span>
-      <h2>온라인 운영 방 연결</h2>
-      <p>같은 방 코드와 운영 비밀번호를 입력한 사람은 다른 PC에서도 경매를 이어서 조작할 수 있습니다.</p>
+      <span>일회성 경매 작업방</span>
+      <h2>경매 작업방 시작</h2>
+      <p>방 코드와 비밀번호로 임시 작업방을 만들면 다른 날이나 다른 PC에서도 그대로 이어서 사용할 수 있습니다.</p>
       <label><b>방 코드</b><input value={roomCode} maxLength={20} onChange={e=>setRoomCode(e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g,''))} placeholder="예: KANTO3"/></label>
-      <label><b>운영 비밀번호</b><input type="password" value={adminKey} onChange={e=>setAdminKey(e.target.value)} placeholder="운영자끼리 공유할 비밀번호"/></label>
+      <label><b>비밀번호</b><input type="password" value={adminKey} onChange={e=>setAdminKey(e.target.value)} placeholder="작업방 비밀번호"/></label>
       {error&&<div className="room-error">{error}</div>}
       <div className="room-modal-actions">
         <button disabled={loading||!roomCode||adminKey.length<4} onClick={()=>onJoin(roomCode,adminKey)}><Wifi size={16}/> 기존 방 접속</button>
         <button className="primary-btn" disabled={loading||!roomCode||adminKey.length<4} onClick={()=>onCreate(roomCode,adminKey)}><Plus size={16}/> 새 방 만들기</button>
       </div>
-      <small>운영 비밀번호는 최소 4자입니다. 방마다 데이터가 완전히 분리되어 A조·B조가 동시에 사용할 수 있습니다.</small>
+      <small>비밀번호는 최소 4자입니다. 각 작업방의 설정·선수·팀·경매 기록은 완전히 분리되며, 마지막 사용 후 30일이 지나면 자동 정리됩니다.</small>
     </section>
   </div>;
 }
@@ -140,7 +134,7 @@ function RoomLobby({open,onClose,rooms,loading,error,onRefresh,onCreate,onJoin,o
   };
   return <div className="room-modal-backdrop room-lobby-backdrop">
     <section className="room-lobby">
-      <header><div><span>ONLINE ROOM DIRECTORY</span><h2>경매 방 목록</h2><p>A조·B조·C조처럼 필요한 만큼 독립된 방을 만들어 동시에 운영할 수 있습니다.</p></div><button className="room-modal-close" onClick={onClose}><X size={20}/></button></header>
+      <header><div><span>임시 작업방 목록</span><h2>경매 작업방</h2><p>필요할 때 만들고, 다른 날 다시 접속해 이어서 사용할 수 있습니다.</p></div><button className="room-modal-close" onClick={onClose}><X size={20}/></button></header>
       <div className="room-lobby-tools"><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="방 코드 또는 대회 이름 검색"/><button className="room-refresh-btn" onClick={onRefresh} disabled={loading}>새로고침</button><button className="primary-btn" onClick={onCreate}><Plus size={16}/> 새 방 만들기</button></div>
       {error&&<div className="room-error">{error}</div>}
       <div className="room-directory">
@@ -152,7 +146,7 @@ function RoomLobby({open,onClose,rooms,loading,error,onRefresh,onCreate,onJoin,o
         {!loading&&!filtered.length&&<div className="room-directory-empty">표시할 방이 없습니다. 새 방을 만들어주세요.</div>}
         {loading&&<div className="room-directory-empty">방 목록을 불러오는 중...</div>}
       </div>
-      <footer><small>접속·삭제는 해당 방의 운영 비밀번호가 필요합니다. 방 데이터는 서로 완전히 분리됩니다.</small></footer>
+      <footer><small>접속·삭제에는 해당 작업방의 비밀번호가 필요합니다. 마지막 사용 후 30일이 지나면 자동 삭제됩니다.</small></footer>
     </section>
   </div>;
 }
@@ -615,7 +609,7 @@ function Auction({
       <header className="arena-toolbar">
         <div className="arena-back toolbar-links"><span>LIVE DRAFT</span><small>선수를 추첨하고 팀을 선택하세요</small></div>
         <div className="arena-title">
-          <small>GOCHUBAT DRAFT ARENA</small>
+          <small>고추밭 내전 경매 시스템</small>
           <h2><TournamentTitle title={settings.title}/></h2>
         </div>
         <div className="arena-roulette-control dual inline-control">
@@ -706,7 +700,7 @@ function Auction({
 
 function Players({players,setPlayers,savePlayerSlot,loadPlayerSlot,playerSlots,onApplyAuctionSelection,onRecoverPlayer}) {
   const [f,setF]=useState({name:'',tier:'마스터',main:'TOP',sub:'없음'});
-  const [slotName,setSlotName]=useState('제3회 관동지방컵 명단');
+  const [slotName,setSlotName]=useState('고추밭 내전 명단');
   const [search,setSearch]=useState('');
   const [selectionFilter,setSelectionFilter]=useState('ALL');
   const [draftSelection,setDraftSelection]=useState(()=>new Set(players.filter(p=>p.inAuction!==false).map(p=>p.id)));
@@ -955,7 +949,7 @@ function SettingsView({settings,setSettings,teams,setTeams,onResetAll}) {
     setTeams(makeTeams({...d,teamCount:d.teamNames.length},[]));
   };
 
-  const [slotName,setSlotName]=useState('제3회 관동지방컵 명단');
+  const [slotName,setSlotName]=useState('고추밭 내전 명단');
   return <section className="panel full-panel">
     <div className="panel-title">
       <div><span>AUCTION CONFIG</span><h2>경매 상세 설정</h2></div>
@@ -1296,7 +1290,7 @@ export default function Home(){
 
   const savePlayerSlot=(name)=>{const n=(name||'새 명단').trim();const next=[{name:n,players:players.map(({soldTeamId,soldPrice,...p})=>({...p,status:'waiting',excluded:false})) ,savedAt:Date.now()},...playerSlots.filter(x=>x.name!==n)].slice(0,20);setPlayerSlots(next);alert(`명단 저장 완료: ${n}`)};
   const loadPlayerSlot=(name)=>{const slot=playerSlots.find(x=>x.name===name);if(!slot)return;if(!confirm(`${name} 명단을 불러오면 현재 선수 목록이 교체됩니다. 계속할까요?`))return;setPlayers(slot.players.map(p=>({...p,inAuction:p.inAuction!==false,status:'waiting',excluded:false,soldTeamId:null,soldPrice:null})));setTeams(makeTeams(settings));setRecent([]);setAuctionLog([]);setUnsoldList([]);setCurrentPlayerId(null)};
-  const resetAll=()=>{if(!confirm('정말 전체 초기화할까요? 선수 상태, 팀 배정, 포인트, 유찰, 로그가 모두 초기화됩니다.'))return;setPlayers(DEFAULT_PLAYERS);setTeams(makeTeams(settings));setRecent([]);setAuctionLog([]);setUnsoldList([]);setCurrentPlayerId(null);setUndoStack([])};
+  const resetAll=()=>{if(!confirm('정말 전체 초기화할까요? 선수 상태, 팀 배정, 포인트, 유찰, 로그가 모두 초기화됩니다.'))return;setPlayers([]);setTeams(makeTeams(settings));setRecent([]);setAuctionLog([]);setUnsoldList([]);setCurrentPlayerId(null);setUndoStack([])};
 
   const recoverPlayer=(player)=>{
     if(!player||player.status==='waiting')return;
@@ -1338,8 +1332,8 @@ export default function Home(){
 
   const sharedState=()=>({settings,players,teams,recent,auctionLog,unsoldList,currentPlayerId,livePrice,liveTeamName,spectatorEvent});
   const freshRoomState=()=>{
-    const cleanPlayers=players.map(p=>({...p,status:'waiting',excluded:false,soldTeamId:null,soldPrice:null}));
-    return {settings,players:cleanPlayers,teams:makeTeams(settings),recent:[],auctionLog:[],unsoldList:[],currentPlayerId:null,livePrice:0,liveTeamName:'',spectatorEvent:null};
+    const baseSettings={...DEFAULT_SETTINGS,teamNames:[...DEFAULT_SETTINGS.teamNames],teamPoints:[...DEFAULT_SETTINGS.teamPoints],bidSteps:[...DEFAULT_SETTINGS.bidSteps]};
+    return {settings:baseSettings,players:[],teams:makeTeams(baseSettings),recent:[],auctionLog:[],unsoldList:[],currentPlayerId:null,livePrice:0,liveTeamName:'',spectatorEvent:null};
   };
   latestSharedStateRef.current=sharedState();
 
@@ -1427,15 +1421,16 @@ export default function Home(){
   const fetchRooms=async()=>{
     if(!supabase){setRoomListError('Supabase 환경 변수가 설정되지 않았습니다.');return;}
     setRoomListBusy(true);setRoomListError('');
+    await supabase.rpc('cleanup_expired_auction_rooms');
     const {data,error}=await supabase.from('auction_rooms').select('room_code,state,updated_at').order('updated_at',{ascending:false});
     setRoomListBusy(false);
     if(error){setRoomListError(error.message||'방 목록을 불러오지 못했습니다.');return;}
     setRoomList((data||[]).map(r=>({...r,title:r.state?.settings?.title||r.room_code})));
   };
   useEffect(()=>{if(roomLobby)fetchRooms()},[roomLobby]);
-  const lobbyJoin=async(code)=>{const key=prompt(`${code} 방 운영 비밀번호를 입력하세요.`,'');if(!key)return;await joinRoom(code,key);};
-  const lobbyDelete=async(code)=>{const key=prompt(`${code} 방을 삭제하려면 운영 비밀번호를 입력하세요.`,'');if(!key)return;if(!confirm(`${code} 방과 저장된 경매 데이터를 완전히 삭제할까요?`))return;const {error}=await supabase.rpc('delete_auction_room',{p_room_code:code,p_admin_key:key});if(error)return alert(error.message||'방 삭제에 실패했습니다.');if(roomStatus.roomCode===code){sessionStorage.removeItem(ROOM_SESSION_KEY);roomLoadTokenRef.current++;syncReadyRef.current=false;pendingSyncRef.current=null;setRoomStatus({connected:false,roomCode:'',adminKey:'',role:'local'});restoreLocalModeState();}await fetchRooms();};
-  const lobbyClone=async(room)=>{const code=(prompt('복제할 새 방 코드를 입력하세요.','')||'').trim().toUpperCase().replace(/[^A-Z0-9_-]/g,'');if(!code)return;const key=prompt('새 방에서 사용할 운영 비밀번호를 입력하세요.','');if(!key||key.length<4)return alert('운영 비밀번호는 최소 4자입니다.');const src=room.state||{};const clone={...src,settings:{...(src.settings||DEFAULT_SETTINGS),title:`${src.settings?.title||room.room_code} 복사본`},players:(src.players||[]).map(p=>({...p,status:'waiting',excluded:false,soldTeamId:null,soldPrice:null})),teams:makeTeams(src.settings||DEFAULT_SETTINGS),recent:[],auctionLog:[],unsoldList:[],currentPlayerId:null,livePrice:0,liveTeamName:'',spectatorEvent:null};const {error}=await supabase.rpc('create_auction_room',{p_room_code:code,p_admin_key:key,p_state:clone});if(error)return alert(error.message?.includes('duplicate')?'이미 존재하는 방 코드입니다.':error.message);alert(`${code} 방으로 템플릿을 복제했습니다.`);await fetchRooms();};
+  const lobbyJoin=async(code)=>{const key=prompt(`${code} 방 비밀번호를 입력하세요.`,'');if(!key)return;await joinRoom(code,key);};
+  const lobbyDelete=async(code)=>{const key=prompt(`${code} 방을 삭제하려면 비밀번호를 재확인하세요.`,'');if(!key)return;if(!confirm(`${code} 방과 저장된 경매 데이터를 완전히 삭제할까요?`))return;const {error}=await supabase.rpc('delete_auction_room',{p_room_code:code,p_admin_key:key});if(error)return alert(error.message||'방 삭제에 실패했습니다.');if(roomStatus.roomCode===code){sessionStorage.removeItem(ROOM_SESSION_KEY);roomLoadTokenRef.current++;syncReadyRef.current=false;pendingSyncRef.current=null;setRoomStatus({connected:false,roomCode:'',adminKey:'',role:'local'});setSettings(DEFAULT_SETTINGS);setPlayers([]);setTeams(makeTeams(DEFAULT_SETTINGS));setRecent([]);setAuctionLog([]);setUnsoldList([]);setCurrentPlayerId(null);setUndoStack([]);}await fetchRooms();};
+  const lobbyClone=async(room)=>{const code=(prompt('복제할 새 방 코드를 입력하세요.','')||'').trim().toUpperCase().replace(/[^A-Z0-9_-]/g,'');if(!code)return;const key=prompt('새 방에서 사용할 비밀번호를 입력하세요.','');if(!key||key.length<4)return alert('비밀번호는 최소 4자입니다.');const src=room.state||{};const clone={...src,settings:{...(src.settings||DEFAULT_SETTINGS),title:`${src.settings?.title||room.room_code} 복사본`},players:(src.players||[]).map(p=>({...p,status:'waiting',excluded:false,soldTeamId:null,soldPrice:null})),teams:makeTeams(src.settings||DEFAULT_SETTINGS),recent:[],auctionLog:[],unsoldList:[],currentPlayerId:null,livePrice:0,liveTeamName:'',spectatorEvent:null};const {error}=await supabase.rpc('create_auction_room',{p_room_code:code,p_admin_key:key,p_state:clone});if(error)return alert(error.message?.includes('duplicate')?'이미 존재하는 방 코드입니다.':error.message);alert(`${code} 방으로 템플릿을 복제했습니다.`);await fetchRooms();};
 
   const createRoom=async(code,key)=>{
     if(!supabase)return setRoomError('Supabase 환경 변수가 설정되지 않았습니다.');
@@ -1453,23 +1448,25 @@ export default function Home(){
     setRoomBusy(true);setRoomError('');const roomCode=code.trim().toUpperCase();
     const {data,error}=await supabase.rpc('verify_auction_room',{p_room_code:roomCode,p_admin_key:key});
     setRoomBusy(false);
-    if(error){setRoomError(error.message);return;}if(!data){setRoomError('방 코드 또는 운영 비밀번호가 올바르지 않습니다.');return;}
+    if(error){setRoomError(error.message);return;}if(!data){setRoomError('방 코드 또는 비밀번호가 올바르지 않습니다.');return;}
     if(!roomStatus.connected)persistLocalModeState();
     syncReadyRef.current=false;pendingSyncRef.current=null;applyingRemoteRef.current=true;
     const next={connected:true,roomCode,adminKey:key,role:'admin'};setRoomStatus(next);sessionStorage.setItem(ROOM_SESSION_KEY,JSON.stringify({roomCode,adminKey:key}));setRoomDialog(false);setRoomLobby(false);
   };
-  const disconnectRoom=()=>{if(!confirm('온라인 방 연결을 해제하고 기존 로컬 경매 화면으로 돌아갈까요? 방 데이터는 삭제되지 않습니다.'))return;sessionStorage.removeItem(ROOM_SESSION_KEY);roomLoadTokenRef.current++;syncReadyRef.current=false;pendingSyncRef.current=null;applyingRemoteRef.current=true;setRoomStatus({connected:false,roomCode:'',adminKey:'',role:'local'});restoreLocalModeState();};
+  const disconnectRoom=()=>{if(!confirm('현재 작업방에서 나갈까요? 저장된 방 데이터는 삭제되지 않습니다.'))return;sessionStorage.removeItem(ROOM_SESSION_KEY);roomLoadTokenRef.current++;syncReadyRef.current=false;pendingSyncRef.current=null;applyingRemoteRef.current=true;setRoomStatus({connected:false,roomCode:'',adminKey:'',role:'local'});setSettings(DEFAULT_SETTINGS);setPlayers([]);setTeams(makeTeams(DEFAULT_SETTINGS));setRecent([]);setAuctionLog([]);setUnsoldList([]);setCurrentPlayerId(null);setUndoStack([]);setRoomLobby(true);};
   const deleteRoom=async()=>{
-    if(!roomStatus.connected||!roomStatus.adminKey)return;
-    const typed=prompt(`방 ${roomStatus.roomCode}을 완전히 삭제합니다. 확인을 위해 방 코드를 입력하세요.`,'');
-    if((typed||'').trim().toUpperCase()!==roomStatus.roomCode)return alert('방 코드가 일치하지 않아 삭제를 취소했습니다.');
-    const {error}=await supabase.rpc('delete_auction_room',{p_room_code:roomStatus.roomCode,p_admin_key:roomStatus.adminKey});
-    if(error)return alert(error.message||'방 삭제에 실패했습니다.');
+    if(!roomStatus.connected)return;
+    const key=prompt(`방 ${roomStatus.roomCode}을 삭제하려면 비밀번호를 재확인하세요.`,'');
+    if(!key)return;
+    if(!confirm(`${roomStatus.roomCode} 방과 저장된 경매 데이터를 완전히 삭제할까요?`))return;
+    const {error}=await supabase.rpc('delete_auction_room',{p_room_code:roomStatus.roomCode,p_admin_key:key});
+    if(error)return alert(error.message||'비밀번호가 올바르지 않거나 방 삭제에 실패했습니다.');
     sessionStorage.removeItem(ROOM_SESSION_KEY);
     roomLoadTokenRef.current++;syncReadyRef.current=false;pendingSyncRef.current=null;
     setRoomStatus({connected:false,roomCode:'',adminKey:'',role:'local'});
-    restoreLocalModeState();
-    alert('온라인 방이 삭제되었습니다. 기존 로컬 경매 화면으로 돌아갑니다.');
+    setSettings(DEFAULT_SETTINGS);setPlayers([]);setTeams(makeTeams(DEFAULT_SETTINGS));setRecent([]);setAuctionLog([]);setUnsoldList([]);setCurrentPlayerId(null);setUndoStack([]);
+    setRoomLobby(true);
+    alert('작업방이 삭제되었습니다.');
   };
   const copyText=async(text,msg)=>{try{await navigator.clipboard.writeText(text);alert(msg)}catch{prompt('아래 주소를 복사하세요.',text)}};
   const adminUrl=()=>`${window.location.origin}${window.location.pathname}?room=${encodeURIComponent(roomStatus.roomCode)}`;
@@ -1481,7 +1478,7 @@ export default function Home(){
   if(active==='players')view=<Players players={players} setPlayers={setPlayers} savePlayerSlot={savePlayerSlot} loadPlayerSlot={loadPlayerSlot} playerSlots={playerSlots} onApplyAuctionSelection={applyAuctionSelection} onRecoverPlayer={recoverPlayer}/>;
   if(active==='settings')view=<SettingsView settings={settings} setSettings={setSettings} teams={teams} setTeams={setTeams} onResetAll={resetAll}/>;
   return <>
-    <AppShell active={active} setActive={setActive} settings={settings} roomStatus={roomStatus} onOpenRoom={()=>{setRoomError('');setRoomDialog(true)}} onOpenLobby={()=>setRoomLobby(true)} onDisconnect={disconnectRoom} onDeleteRoom={deleteRoom} onCopyAdmin={()=>copyText(adminUrl(),'운영자 접속 주소를 복사했습니다. 비밀번호는 따로 전달하세요.')}>{view}</AppShell>
+    <AppShell active={active} setActive={setActive} settings={settings} roomStatus={roomStatus} onOpenRoom={()=>{setRoomError('');setRoomDialog(true)}} onOpenLobby={()=>setRoomLobby(true)} onDisconnect={disconnectRoom} onDeleteRoom={deleteRoom} onCopyAdmin={()=>copyText(adminUrl(),'작업방 접속 주소를 복사했습니다. 비밀번호는 따로 전달하세요.')}>{view}</AppShell>
     <RoomLobby open={roomLobby} onClose={()=>setRoomLobby(false)} rooms={roomList} loading={roomListBusy} error={roomListError} onRefresh={fetchRooms} onCreate={()=>{setRoomLobby(false);setRoomError('');setRoomDialog(true)}} onJoin={lobbyJoin} onDelete={lobbyDelete} onClone={lobbyClone}/>
     <RoomDialog open={roomDialog} onClose={()=>setRoomDialog(false)} onCreate={createRoom} onJoin={joinRoom} loading={roomBusy} error={roomError} defaultCode={requestedRoomCode}/>
     {syncError&&roomStatus.connected&&<div className="sync-error-toast">{syncError}</div>}

@@ -34,7 +34,7 @@ begin
   where room_code = upper(trim(p_room_code));
 
   if h is null or extensions.crypt(p_admin_key, h) <> h then
-    raise exception '방 코드 또는 운영 비밀번호가 올바르지 않습니다.';
+    raise exception '방 코드 또는 비밀번호가 올바르지 않습니다.';
   end if;
 
   delete from public.auction_rooms
@@ -43,4 +43,24 @@ end;
 $$;
 
 grant execute on function public.delete_auction_room(text,text)
+to anon, authenticated;
+
+-- v4.0.4: 마지막 사용 후 30일이 지난 일회성 작업방 자동 정리
+create or replace function public.cleanup_expired_auction_rooms()
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  deleted_count integer;
+begin
+  delete from public.auction_rooms
+  where updated_at < now() - interval '30 days';
+  get diagnostics deleted_count = row_count;
+  return deleted_count;
+end;
+$$;
+
+grant execute on function public.cleanup_expired_auction_rooms()
 to anon, authenticated;
