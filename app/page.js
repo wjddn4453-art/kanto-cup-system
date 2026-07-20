@@ -193,10 +193,15 @@ function Auction({
   const roulettePool=rouletteMode==='unsold'?unsoldPool:normalPool;
   const filteredPlayers=auctionPlayers.filter(p=>filter==='ALL'||p.main===filter);
 
+  useEffect(()=>{
+    if(spinning)return;
+    if(current)setRouletteName(current.name);
+    else if(rouletteName!=='룰렛 대기')setRouletteName('룰렛 대기');
+  },[currentPlayerId,current?.name,spinning]);
+
   const pushEvent=(event)=>{
     const next={...event,id:Date.now()};
     setSpectatorEvent(next);
-    onStateChanged?.({spectatorEvent:next});
     try{
       localStorage.setItem('gochubat-spectator-event',JSON.stringify(next));
       const channel=new BroadcastChannel('gochubat-auction-live');
@@ -319,7 +324,7 @@ function Auction({
     setOverlay({type:'sold',player:current.name,team:team.name,price});
     playUiSound('sold', settings.sound);
     pushEvent({type:'sold',sale});
-    onStateChanged?.({livePrice:price,liveTeamName:team.name});
+    // 전체 상태는 상위 실시간 동기화 효과에서 최신 React 상태로 전송됩니다.
 
     setAssignModal(false);
     setCurrentPlayerId(null);
@@ -379,7 +384,7 @@ function Auction({
     setPriceInput('0');
     setRouletteName('룰렛 대기');
     setView('board');
-    onStateChanged?.({livePrice:0,liveTeamName:'',spectatorEvent:{type:'reset',id:Date.now()}});
+    pushEvent({type:'reset'});
   };
 
   const clearAuctionLog=()=>{
@@ -1180,9 +1185,9 @@ export default function Home(){
 
   useEffect(()=>{
     if(!ready||!supabase||!roomStatus.connected||roomStatus.role!=='admin'||!roomStatus.adminKey||!syncReadyRef.current||applyingRemoteRef.current)return;
-    const timer=setTimeout(()=>onStateChanged(),220);
+    const timer=setTimeout(()=>onStateChanged(),120);
     return()=>clearTimeout(timer);
-  },[ready,roomStatus.connected,roomStatus.role,roomStatus.roomCode,roomStatus.adminKey,settings,players,teams,recent,auctionLog,unsoldList,currentPlayerId,livePrice,liveTeamName]);
+  },[ready,roomStatus.connected,roomStatus.role,roomStatus.roomCode,roomStatus.adminKey,settings,players,teams,recent,auctionLog,unsoldList,currentPlayerId,livePrice,liveTeamName,spectatorEvent]);
 
   const createRoom=async(code,key)=>{
     if(!supabase)return setRoomError('Supabase 환경 변수가 설정되지 않았습니다.');
@@ -1206,7 +1211,14 @@ export default function Home(){
   const watchUrl=()=>`${window.location.origin}${window.location.pathname}?mode=watch&room=${encodeURIComponent(roomStatus.roomCode)}`;
   const adminUrl=()=>`${window.location.origin}${window.location.pathname}?room=${encodeURIComponent(roomStatus.roomCode)}`;
 
-  if(pageMode==='watch')return <main className="watch-standalone"><WatchConnection roomCode={watchRoom} status={syncError?'error':'connected'} error={syncError}/><Watch settings={settings} teams={teams} players={players.filter(p=>p.inAuction!==false)} recent={recent} currentPlayerId={currentPlayerId} livePrice={livePrice} liveTeamName={liveTeamName} spectatorEvent={spectatorEvent} unsoldList={unsoldList}/></main>;
+  if(pageMode==='watch')return <main className="watch-mirror-shell">
+    <WatchConnection roomCode={watchRoom} status={syncError?'error':'connected'} error={syncError}/>
+    <div className="watch-mirror-lock">
+      <Auction players={players} setPlayers={()=>{}} teams={teams} setTeams={()=>{}} settings={settings} recent={recent} setRecent={()=>{}} currentPlayerId={currentPlayerId} setCurrentPlayerId={()=>{}}
+        spectatorEvent={spectatorEvent} setSpectatorEvent={()=>{}} unsoldList={unsoldList} setUnsoldList={()=>{}} onStateChanged={()=>{}} undoStack={[]} setUndoStack={()=>{}} auctionLog={auctionLog} setAuctionLog={()=>{}}/>
+    </div>
+    <div className="watch-readonly-note">관전자 화면 · 조작 기능은 비활성화되어 있습니다.</div>
+  </main>;
 
   let view=<Auction players={players} setPlayers={setPlayers} teams={teams} setTeams={setTeams} settings={settings} recent={recent} setRecent={setRecent} currentPlayerId={currentPlayerId} setCurrentPlayerId={setCurrentPlayerId}
       spectatorEvent={spectatorEvent} setSpectatorEvent={setSpectatorEvent} unsoldList={unsoldList} setUnsoldList={setUnsoldList} onStateChanged={onStateChanged} undoStack={undoStack} setUndoStack={setUndoStack} auctionLog={auctionLog} setAuctionLog={setAuctionLog}/>;
