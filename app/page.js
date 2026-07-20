@@ -10,7 +10,7 @@ const PLAYER_SLOT_KEY = 'gochubat-v404-player-slots';
 const TOURNAMENT_SLOT_KEY = 'gochubat-v404-tournament-slots';
 const ROOM_SESSION_KEY = 'gochubat-temporary-room-v2';
 const ROLES = ['TOP','JUG','MID','ADC','SUP'];
-const TIERS = ['챌린저','그랜드마스터','마스터','다이아몬드','에메랄드','플래티넘','골드','실버','브론즈','아이언'];
+const TIERS = ['챌린저','그랜드마스터','마스터+','마스터-','다이아몬드','에메랄드','플래티넘','골드','실버','브론즈','아이언'];
 const DEFAULT_SETTINGS = {
   title: '고추밭 내전', teamCount: 5,
   sound: true, animation: true, rouletteSeconds: 4.5,
@@ -19,7 +19,11 @@ const DEFAULT_SETTINGS = {
   teamPoints: [1000,1000,1000,1000,1000]
 };
 
-const TIER_SCORE = {'챌린저':1000,'그랜드마스터':900,'마스터':800,'다이아몬드':700,'에메랄드':600,'플래티넘':500,'골드':400,'실버':300,'브론즈':200,'아이언':100};
+const TIER_SCORE = {'챌린저':1000,'그랜드마스터':900,'마스터+':825,'마스터-':775,'다이아몬드':700,'에메랄드':600,'플래티넘':500,'골드':400,'실버':300,'브론즈':200,'아이언':100};
+function normalizeTier(tier){
+  if(tier==='마스터') return '마스터-';
+  return TIERS.includes(tier)?tier:'마스터-';
+}
 function secureRandomIndex(length){
   if(length<=1) return 0;
   try{const a=new Uint32Array(1);crypto.getRandomValues(a);return a[0]%length;}catch{return Math.floor(Math.random()*length)}
@@ -703,7 +707,7 @@ function Auction({
 }
 
 function Players({players,setPlayers,savePlayerSlot,loadPlayerSlot,playerSlots,onApplyAuctionSelection,onRecoverPlayer}) {
-  const [f,setF]=useState({name:'',tier:'마스터',main:'TOP',sub:'없음'});
+  const [f,setF]=useState({name:'',tier:'마스터-',main:'TOP',sub:'없음'});
   const [slotName,setSlotName]=useState('고추밭 내전 명단');
   const [search,setSearch]=useState('');
   const [selectionFilter,setSelectionFilter]=useState('ALL');
@@ -714,7 +718,7 @@ function Players({players,setPlayers,savePlayerSlot,loadPlayerSlot,playerSlots,o
     const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`gochubat-players-${Date.now()}.json`;a.click();URL.revokeObjectURL(url);
   };
   const importPlayers=async(file)=>{
-    try{const raw=JSON.parse(await file.text());const list=Array.isArray(raw)?raw:raw.players;if(!Array.isArray(list))throw new Error();if(!confirm(`${list.length}명의 선수 명단을 불러와 현재 목록을 교체할까요?`))return;setPlayers(list.map((p,i)=>({id:p.id||Date.now()+i,name:String(p.name||'선수'),tier:TIERS.includes(p.tier)?p.tier:'마스터',main:ROLES.includes(p.main)?p.main:'TOP',sub:ROLES.includes(p.sub)?p.sub:'없음',status:'waiting',excluded:false,inAuction:p.inAuction!==false,imageUrl:p.imageUrl||''})));}catch{alert('올바른 선수 명단 JSON 파일이 아닙니다.')}finally{if(importRef.current)importRef.current.value='';}
+    try{const raw=JSON.parse(await file.text());const list=Array.isArray(raw)?raw:raw.players;if(!Array.isArray(list))throw new Error();if(!confirm(`${list.length}명의 선수 명단을 불러와 현재 목록을 교체할까요?`))return;setPlayers(list.map((p,i)=>({id:p.id||Date.now()+i,name:String(p.name||'선수'),tier:normalizeTier(p.tier),main:ROLES.includes(p.main)?p.main:'TOP',sub:ROLES.includes(p.sub)?p.sub:'없음',status:'waiting',excluded:false,inAuction:p.inAuction!==false,imageUrl:p.imageUrl||''})));}catch{alert('올바른 선수 명단 JSON 파일이 아닙니다.')}finally{if(importRef.current)importRef.current.value='';}
   };
 
   useEffect(()=>{
@@ -724,7 +728,7 @@ function Players({players,setPlayers,savePlayerSlot,loadPlayerSlot,playerSlots,o
   const add=()=>{
     if(!f.name.trim())return;
     setPlayers(p=>[...p,{id:Date.now(),...f,name:f.name.trim(),status:'waiting',excluded:false,inAuction:false,imageUrl:''}]);
-    setF({name:'',tier:'마스터',main:'TOP',sub:'없음'});
+    setF({name:'',tier:'마스터-',main:'TOP',sub:'없음'});
   };
 
   const committedIds=new Set(players.filter(p=>p.inAuction!==false).map(p=>p.id));
@@ -1262,7 +1266,7 @@ export default function Home(){
       else if(roomFromUrl){setRequestedRoomCode(roomFromUrl);setRoomDialog(true);}
       else setRoomLobby(true);
     }catch{}
-    try{const raw=localStorage.getItem(KEY);if(raw){const x=JSON.parse(raw);const st={...DEFAULT_SETTINGS,...x.settings};setSettings(st);setPlayers((x.players||DEFAULT_PLAYERS).map(p=>({...p,inAuction:p.inAuction!==false})));setTeams(makeTeams(st,x.teams||[]));setRecent(x.recent||[]);setAuctionLog(x.auctionLog||[]);setCurrentPlayerId(x.currentPlayerId??null);setUnsoldList(x.unsoldList||[]);setUndoStack(x.undoStack||JSON.parse(localStorage.getItem(UNDO_KEY)||'[]'));setLivePrice(x.livePrice||0);setLiveTeamName(x.liveTeamName||'');setSpectatorEvent(x.spectatorEvent||null);const ps=localStorage.getItem(PLAYER_SLOT_KEY);if(ps)setPlayerSlots(JSON.parse(ps));}}catch{}
+    try{const raw=localStorage.getItem(KEY);if(raw){const x=JSON.parse(raw);const st={...DEFAULT_SETTINGS,...x.settings};setSettings(st);setPlayers((x.players||DEFAULT_PLAYERS).map(p=>({...p,tier:normalizeTier(p.tier),inAuction:p.inAuction!==false})));setTeams(makeTeams(st,x.teams||[]));setRecent(x.recent||[]);setAuctionLog(x.auctionLog||[]);setCurrentPlayerId(x.currentPlayerId??null);setUnsoldList(x.unsoldList||[]);setUndoStack(x.undoStack||JSON.parse(localStorage.getItem(UNDO_KEY)||'[]'));setLivePrice(x.livePrice||0);setLiveTeamName(x.liveTeamName||'');setSpectatorEvent(x.spectatorEvent||null);const ps=localStorage.getItem(PLAYER_SLOT_KEY);if(ps)setPlayerSlots(JSON.parse(ps));}}catch{}
     setReady(true)
   },[]);
   const localModeState=()=>({settings,players,teams,recent,auctionLog,currentPlayerId,unsoldList,undoStack,livePrice,liveTeamName,spectatorEvent});
@@ -1285,7 +1289,7 @@ export default function Home(){
       const x=JSON.parse(raw);const st={...DEFAULT_SETTINGS,...x.settings};
       applyingRemoteRef.current=true;
       setSettings(st);
-      setPlayers((x.players||DEFAULT_PLAYERS).map(p=>({...p,inAuction:p.inAuction!==false})));
+      setPlayers((x.players||DEFAULT_PLAYERS).map(p=>({...p,tier:normalizeTier(p.tier),inAuction:p.inAuction!==false})));
       setTeams(makeTeams(st,x.teams||[]));setRecent(x.recent||[]);setAuctionLog(x.auctionLog||[]);
       setCurrentPlayerId(x.currentPlayerId??null);setUnsoldList(x.unsoldList||[]);
       setUndoStack(x.undoStack||JSON.parse(localStorage.getItem(UNDO_KEY)||'[]'));
@@ -1299,7 +1303,7 @@ export default function Home(){
   },[ready,roomStatus.connected,settings,players,teams,recent,auctionLog,currentPlayerId,unsoldList,undoStack,livePrice,liveTeamName,spectatorEvent,playerSlots]);
 
   const savePlayerSlot=(name)=>{const n=(name||'새 명단').trim();const next=[{name:n,players:players.map(({soldTeamId,soldPrice,...p})=>({...p,status:'waiting',excluded:false})) ,savedAt:Date.now()},...playerSlots.filter(x=>x.name!==n)].slice(0,20);setPlayerSlots(next);alert(`명단 저장 완료: ${n}`)};
-  const loadPlayerSlot=(name)=>{const slot=playerSlots.find(x=>x.name===name);if(!slot)return;if(!confirm(`${name} 명단을 불러오면 현재 선수 목록이 교체됩니다. 계속할까요?`))return;setPlayers(slot.players.map(p=>({...p,inAuction:p.inAuction!==false,status:'waiting',excluded:false,soldTeamId:null,soldPrice:null})));setTeams(makeTeams(settings));setRecent([]);setAuctionLog([]);setUnsoldList([]);setCurrentPlayerId(null)};
+  const loadPlayerSlot=(name)=>{const slot=playerSlots.find(x=>x.name===name);if(!slot)return;if(!confirm(`${name} 명단을 불러오면 현재 선수 목록이 교체됩니다. 계속할까요?`))return;setPlayers(slot.players.map(p=>({...p,tier:normalizeTier(p.tier),inAuction:p.inAuction!==false,status:'waiting',excluded:false,soldTeamId:null,soldPrice:null})));setTeams(makeTeams(settings));setRecent([]);setAuctionLog([]);setUnsoldList([]);setCurrentPlayerId(null)};
   const resetAll=()=>{if(!confirm('정말 전체 초기화할까요? 선수 상태, 팀 배정, 포인트, 유찰, 로그가 모두 초기화됩니다.'))return;setPlayers([]);setTeams(makeTeams(settings));setRecent([]);setAuctionLog([]);setUnsoldList([]);setCurrentPlayerId(null);setUndoStack([])};
 
   const recoverPlayer=(player)=>{
@@ -1352,7 +1356,7 @@ export default function Home(){
     // 방에 처음 접속해 DB 상태를 읽을 때는 같은 브라우저가 예전에 저장한 방이어도 반드시 적용해야 합니다.
     if(!options.force&&roomStatus.role==='admin'&&x?._syncClient===clientIdRef.current)return;
     applyingRemoteRef.current=true;
-    if(x.settings)setSettings(x.settings);if(x.players)setPlayers(x.players);if(x.teams)setTeams(x.teams);if(x.recent)setRecent(x.recent);if(x.auctionLog)setAuctionLog(x.auctionLog);if(x.unsoldList)setUnsoldList(x.unsoldList);if('currentPlayerId'in x)setCurrentPlayerId(x.currentPlayerId);if('spectatorEvent'in x)setSpectatorEvent(x.spectatorEvent);if('livePrice'in x)setLivePrice(x.livePrice||0);if('liveTeamName'in x)setLiveTeamName(x.liveTeamName||'');
+    if(x.settings)setSettings(x.settings);if(x.players)setPlayers(x.players.map(p=>({...p,tier:normalizeTier(p.tier)})));if(x.teams)setTeams(x.teams);if(x.recent)setRecent(x.recent);if(x.auctionLog)setAuctionLog(x.auctionLog);if(x.unsoldList)setUnsoldList(x.unsoldList);if('currentPlayerId'in x)setCurrentPlayerId(x.currentPlayerId);if('spectatorEvent'in x)setSpectatorEvent(x.spectatorEvent);if('livePrice'in x)setLivePrice(x.livePrice||0);if('liveTeamName'in x)setLiveTeamName(x.liveTeamName||'');
     setTimeout(()=>{applyingRemoteRef.current=false},120);
   };
 
