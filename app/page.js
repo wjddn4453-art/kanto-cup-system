@@ -1232,6 +1232,7 @@ export default function Home(){
   const latestSharedStateRef=useRef(null);
   const pendingSyncRef=useRef(null);
   const syncWritingRef=useRef(false);
+  const roomLoadTokenRef=useRef(0);
   useEffect(()=>{const fn=()=>setActive('teams');window.addEventListener('go-team-list',fn);return()=>window.removeEventListener('go-team-list',fn)},[]);
   const [settings,setSettings]=useState(DEFAULT_SETTINGS);
   const [players,setPlayers]=useState(DEFAULT_PLAYERS);
@@ -1289,7 +1290,7 @@ export default function Home(){
     }catch{}
   };
   useEffect(()=>{
-    if(ready&&!roomStatus.connected)persistLocalModeState();
+    if(ready&&!roomStatus.connected&&!applyingRemoteRef.current)persistLocalModeState();
     localStorage.setItem(PLAYER_SLOT_KEY,JSON.stringify(playerSlots));
   },[ready,roomStatus.connected,settings,players,teams,recent,auctionLog,currentPlayerId,unsoldList,undoStack,livePrice,liveTeamName,spectatorEvent,playerSlots]);
 
@@ -1336,11 +1337,16 @@ export default function Home(){
   };
 
   const sharedState=()=>({settings,players,teams,recent,auctionLog,unsoldList,currentPlayerId,livePrice,liveTeamName,spectatorEvent});
+  const freshRoomState=()=>{
+    const cleanPlayers=players.map(p=>({...p,status:'waiting',excluded:false,soldTeamId:null,soldPrice:null}));
+    return {settings,players:cleanPlayers,teams:makeTeams(settings),recent:[],auctionLog:[],unsoldList:[],currentPlayerId:null,livePrice:0,liveTeamName:'',spectatorEvent:null};
+  };
   latestSharedStateRef.current=sharedState();
 
-  const applyRemoteState=(x={})=>{
-    // 내가 방금 보낸 오래된 응답이 다시 들어와 최신 로컬 상태를 덮는 문제를 막습니다.
-    if(roomStatus.role==='admin'&&x?._syncClient===clientIdRef.current)return;
+  const applyRemoteState=(x={},options={})=>{
+    // 실시간 구독으로 되돌아온 내 저장 응답만 무시합니다.
+    // 방에 처음 접속해 DB 상태를 읽을 때는 같은 브라우저가 예전에 저장한 방이어도 반드시 적용해야 합니다.
+    if(!options.force&&roomStatus.role==='admin'&&x?._syncClient===clientIdRef.current)return;
     applyingRemoteRef.current=true;
     if(x.settings)setSettings(x.settings);if(x.players)setPlayers(x.players);if(x.teams)setTeams(x.teams);if(x.recent)setRecent(x.recent);if(x.auctionLog)setAuctionLog(x.auctionLog);if(x.unsoldList)setUnsoldList(x.unsoldList);if('currentPlayerId'in x)setCurrentPlayerId(x.currentPlayerId);if('spectatorEvent'in x)setSpectatorEvent(x.spectatorEvent);if('livePrice'in x)setLivePrice(x.livePrice||0);if('liveTeamName'in x)setLiveTeamName(x.liveTeamName||'');
     setTimeout(()=>{applyingRemoteRef.current=false},120);
@@ -1351,13 +1357,13 @@ export default function Home(){
     syncWritingRef.current=true;
     try{
       while(pendingSyncRef.current){
-        const payload=pendingSyncRef.current;
+        const job=pendingSyncRef.current;
         pendingSyncRef.current=null;
         const {error}=await supabase.rpc('update_auction_room',{
-          p_room_code:roomStatus.roomCode,
-          p_admin_key:roomStatus.adminKey,
-          p_state:payload,
-          p_event:payload.spectatorEvent||null
+          p_room_code:job.roomCode,
+          p_admin_key:job.adminKey,
+          p_state:job.payload,
+          p_event:job.payload.spectatorEvent||null
         });
         if(error){setSyncError(error.message||'동기화 실패');break;}
         setSyncError('');
@@ -1372,26 +1378,44 @@ export default function Home(){
     if(!supabase||!roomStatus.connected||roomStatus.role!=='admin'||!roomStatus.adminKey)return;
     const seq=++syncSeqRef.current;
     pendingSyncRef.current={
-      ...(latestSharedStateRef.current||sharedState()),
-      ...extra,
-      _syncClient:clientIdRef.current,
-      _syncSeq:seq,
-      _syncAt:Date.now()
+      roomCode:roomStatus.roomCode,
+      adminKey:roomStatus.adminKey,
+      payload:{
+        ...(latestSharedStateRef.current||sharedState()),
+        ...extra,
+        _syncClient:clientIdRef.current,
+        _syncSeq:seq,
+        _syncAt:Date.now()
+      }
     };
     flushSyncQueue();
   };
 
   useEffect(()=>{
     if(!supabase||!roomStatus.connected)return;
-    let ch;let alive=true;syncReadyRef.current=false;setSyncError('');
+    let ch;let alive=true;
+    const loadToken=++roomLoadTokenRef.current;
+    syncReadyRef.current=false;
+    pendingSyncRef.current=null;
+    applyingRemoteRef.current=true;
+    setSyncError('');
     (async()=>{
-      const {data,error}=await supabase.from('auction_rooms').select('state').eq('room_code',roomStatus.roomCode).maybeSingle();
-      if(!alive)return;
-      if(error||!data){setSyncError('온라인 방을 불러오지 못했습니다.');return;}
-      applyRemoteState(data.state||{});syncReadyRef.current=true;
-      ch=supabase.channel(`room-${roomStatus.roomCode}-${Math.random()}`).on('postgres_changes',{event:'UPDATE',schema:'public',table:'auction_rooms',filter:`room_code=eq.${roomStatus.roomCode}`},({new:n})=>applyRemoteState(n.state||{})).subscribe(status=>{if(status==='CHANNEL_ERROR')setSyncError('실시간 연결이 끊겼습니다.')});
+      const activeRoomCode=roomStatus.roomCode;
+      const {data,error}=await supabase.from('auction_rooms').select('state').eq('room_code',activeRoomCode).maybeSingle();
+      if(!alive||loadToken!==roomLoadTokenRef.current)return;
+      if(error||!data){applyingRemoteRef.current=false;setSyncError('온라인 방을 불러오지 못했습니다.');return;}
+      applyRemoteState(data.state||{},{force:true});
+      setTimeout(()=>{
+        if(alive&&loadToken===roomLoadTokenRef.current){
+          applyingRemoteRef.current=false;
+          syncReadyRef.current=true;
+        }
+      },160);
+      ch=supabase.channel(`room-${activeRoomCode}-${Math.random()}`).on('postgres_changes',{event:'UPDATE',schema:'public',table:'auction_rooms',filter:`room_code=eq.${activeRoomCode}`},({new:n})=>{
+        if(alive&&loadToken===roomLoadTokenRef.current)applyRemoteState(n.state||{});
+      }).subscribe(status=>{if(status==='CHANNEL_ERROR')setSyncError('실시간 연결이 끊겼습니다.')});
     })();
-    return()=>{alive=false;syncReadyRef.current=false;if(ch)supabase.removeChannel(ch)};
+    return()=>{alive=false;roomLoadTokenRef.current++;syncReadyRef.current=false;pendingSyncRef.current=null;applyingRemoteRef.current=false;if(ch)supabase.removeChannel(ch)};
   },[roomStatus.connected,roomStatus.roomCode]);
 
   useEffect(()=>{
@@ -1410,17 +1434,18 @@ export default function Home(){
   };
   useEffect(()=>{if(roomLobby)fetchRooms()},[roomLobby]);
   const lobbyJoin=async(code)=>{const key=prompt(`${code} 방 운영 비밀번호를 입력하세요.`,'');if(!key)return;await joinRoom(code,key);};
-  const lobbyDelete=async(code)=>{const key=prompt(`${code} 방을 삭제하려면 운영 비밀번호를 입력하세요.`,'');if(!key)return;if(!confirm(`${code} 방과 저장된 경매 데이터를 완전히 삭제할까요?`))return;const {error}=await supabase.rpc('delete_auction_room',{p_room_code:code,p_admin_key:key});if(error)return alert(error.message||'방 삭제에 실패했습니다.');if(roomStatus.roomCode===code){sessionStorage.removeItem(ROOM_SESSION_KEY);syncReadyRef.current=false;pendingSyncRef.current=null;setRoomStatus({connected:false,roomCode:'',adminKey:'',role:'local'});restoreLocalModeState();}await fetchRooms();};
+  const lobbyDelete=async(code)=>{const key=prompt(`${code} 방을 삭제하려면 운영 비밀번호를 입력하세요.`,'');if(!key)return;if(!confirm(`${code} 방과 저장된 경매 데이터를 완전히 삭제할까요?`))return;const {error}=await supabase.rpc('delete_auction_room',{p_room_code:code,p_admin_key:key});if(error)return alert(error.message||'방 삭제에 실패했습니다.');if(roomStatus.roomCode===code){sessionStorage.removeItem(ROOM_SESSION_KEY);roomLoadTokenRef.current++;syncReadyRef.current=false;pendingSyncRef.current=null;setRoomStatus({connected:false,roomCode:'',adminKey:'',role:'local'});restoreLocalModeState();}await fetchRooms();};
   const lobbyClone=async(room)=>{const code=(prompt('복제할 새 방 코드를 입력하세요.','')||'').trim().toUpperCase().replace(/[^A-Z0-9_-]/g,'');if(!code)return;const key=prompt('새 방에서 사용할 운영 비밀번호를 입력하세요.','');if(!key||key.length<4)return alert('운영 비밀번호는 최소 4자입니다.');const src=room.state||{};const clone={...src,settings:{...(src.settings||DEFAULT_SETTINGS),title:`${src.settings?.title||room.room_code} 복사본`},players:(src.players||[]).map(p=>({...p,status:'waiting',excluded:false,soldTeamId:null,soldPrice:null})),teams:makeTeams(src.settings||DEFAULT_SETTINGS),recent:[],auctionLog:[],unsoldList:[],currentPlayerId:null,livePrice:0,liveTeamName:'',spectatorEvent:null};const {error}=await supabase.rpc('create_auction_room',{p_room_code:code,p_admin_key:key,p_state:clone});if(error)return alert(error.message?.includes('duplicate')?'이미 존재하는 방 코드입니다.':error.message);alert(`${code} 방으로 템플릿을 복제했습니다.`);await fetchRooms();};
 
   const createRoom=async(code,key)=>{
     if(!supabase)return setRoomError('Supabase 환경 변수가 설정되지 않았습니다.');
     setRoomBusy(true);setRoomError('');
     const roomCode=code.trim().toUpperCase();
-    const {error}=await supabase.rpc('create_auction_room',{p_room_code:roomCode,p_admin_key:key,p_state:sharedState()});
+    const {error}=await supabase.rpc('create_auction_room',{p_room_code:roomCode,p_admin_key:key,p_state:freshRoomState()});
     setRoomBusy(false);
     if(error){setRoomError(error.message?.includes('duplicate')?'이미 존재하는 방 코드입니다. 기존 방 접속을 눌러주세요.':error.message);return;}
-    persistLocalModeState();
+    if(!roomStatus.connected)persistLocalModeState();
+    syncReadyRef.current=false;pendingSyncRef.current=null;applyingRemoteRef.current=true;
     const next={connected:true,roomCode,adminKey:key,role:'admin'};setRoomStatus(next);sessionStorage.setItem(ROOM_SESSION_KEY,JSON.stringify({roomCode,adminKey:key}));setRoomDialog(false);setRoomLobby(false);
   };
   const joinRoom=async(code,key)=>{
@@ -1429,10 +1454,11 @@ export default function Home(){
     const {data,error}=await supabase.rpc('verify_auction_room',{p_room_code:roomCode,p_admin_key:key});
     setRoomBusy(false);
     if(error){setRoomError(error.message);return;}if(!data){setRoomError('방 코드 또는 운영 비밀번호가 올바르지 않습니다.');return;}
-    persistLocalModeState();
+    if(!roomStatus.connected)persistLocalModeState();
+    syncReadyRef.current=false;pendingSyncRef.current=null;applyingRemoteRef.current=true;
     const next={connected:true,roomCode,adminKey:key,role:'admin'};setRoomStatus(next);sessionStorage.setItem(ROOM_SESSION_KEY,JSON.stringify({roomCode,adminKey:key}));setRoomDialog(false);setRoomLobby(false);
   };
-  const disconnectRoom=()=>{if(!confirm('온라인 방 연결을 해제하고 기존 로컬 경매 화면으로 돌아갈까요? 방 데이터는 삭제되지 않습니다.'))return;sessionStorage.removeItem(ROOM_SESSION_KEY);syncReadyRef.current=false;pendingSyncRef.current=null;setRoomStatus({connected:false,roomCode:'',adminKey:'',role:'local'});restoreLocalModeState();};
+  const disconnectRoom=()=>{if(!confirm('온라인 방 연결을 해제하고 기존 로컬 경매 화면으로 돌아갈까요? 방 데이터는 삭제되지 않습니다.'))return;sessionStorage.removeItem(ROOM_SESSION_KEY);roomLoadTokenRef.current++;syncReadyRef.current=false;pendingSyncRef.current=null;applyingRemoteRef.current=true;setRoomStatus({connected:false,roomCode:'',adminKey:'',role:'local'});restoreLocalModeState();};
   const deleteRoom=async()=>{
     if(!roomStatus.connected||!roomStatus.adminKey)return;
     const typed=prompt(`방 ${roomStatus.roomCode}을 완전히 삭제합니다. 확인을 위해 방 코드를 입력하세요.`,'');
@@ -1440,7 +1466,7 @@ export default function Home(){
     const {error}=await supabase.rpc('delete_auction_room',{p_room_code:roomStatus.roomCode,p_admin_key:roomStatus.adminKey});
     if(error)return alert(error.message||'방 삭제에 실패했습니다.');
     sessionStorage.removeItem(ROOM_SESSION_KEY);
-    syncReadyRef.current=false;pendingSyncRef.current=null;
+    roomLoadTokenRef.current++;syncReadyRef.current=false;pendingSyncRef.current=null;
     setRoomStatus({connected:false,roomCode:'',adminKey:'',role:'local'});
     restoreLocalModeState();
     alert('온라인 방이 삭제되었습니다. 기존 로컬 경매 화면으로 돌아갑니다.');
