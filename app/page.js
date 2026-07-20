@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase/client';
-import { Users, Gavel, Dices, Settings, Eye, Trophy, UserRoundCog, RotateCcw, Save, History, Sparkles, Plus, Trash2, Maximize2, Wifi, WifiOff, KeyRound, List, Volume2, VolumeX, Copy, LogOut, X, Link2 } from 'lucide-react';
+import { Users, Gavel, Dices, Settings, Trophy, UserRoundCog, RotateCcw, Save, History, Sparkles, Plus, Trash2, Maximize2, Wifi, WifiOff, KeyRound, List, Volume2, VolumeX, Copy, LogOut, X, Link2 } from 'lucide-react';
 
 const KEY = 'gochubat-v02';
 const UNDO_KEY = 'gochubat-v02-undo';
@@ -65,7 +65,7 @@ function TournamentTitle({title='제3회 관동지방컵'}) {
   </span>;
 }
 
-function AppShell({active,setActive,settings,children,roomStatus,onOpenRoom,onDisconnect,onCopyWatch,onCopyAdmin}) {
+function AppShell({active,setActive,settings,children,roomStatus,onOpenRoom,onOpenLobby,onDisconnect,onCopyAdmin,onDeleteRoom}) {
   const menu = [
     ['auction','경매 화면'],
     ['list','전체목록'],
@@ -87,12 +87,13 @@ function AppShell({active,setActive,settings,children,roomStatus,onOpenRoom,onDi
       <div className="room-toolbar-state">
         {roomStatus?.connected?<Wifi size={16}/>:<WifiOff size={16}/>} 
         <b>{roomStatus?.connected?`온라인 방 ${roomStatus.roomCode}`:'로컬 모드'}</b>
-        <span>{roomStatus?.connected?'다른 운영자·관전자와 실시간 동기화 중':'현재 기기에만 저장됩니다.'}</span>
+        <span>{roomStatus?.connected?'같은 방의 운영자들과 실시간 동기화 중':'현재 기기에만 저장됩니다.'}</span>
       </div>
       <div className="room-toolbar-actions">
+        <button onClick={onOpenLobby}><List size={15}/> 방 목록</button>
         {roomStatus?.connected?<>
-          <button onClick={onCopyWatch}><Eye size={15}/> 관전자 링크 복사</button>
           <button onClick={onCopyAdmin}><Copy size={15}/> 운영자 링크 복사</button>
+          <button className="danger-lite" onClick={onDeleteRoom}><Trash2 size={15}/> 방 삭제</button>
           <button className="danger-lite" onClick={onDisconnect}><LogOut size={15}/> 연결 해제</button>
         </>:<button className="primary-room-btn" onClick={onOpenRoom}><Link2 size={15}/> 온라인 방 연결</button>}
       </div>
@@ -101,9 +102,10 @@ function AppShell({active,setActive,settings,children,roomStatus,onOpenRoom,onDi
   </main>;
 }
 
-function RoomDialog({open,onClose,onCreate,onJoin,loading,error}){
-  const [roomCode,setRoomCode]=useState('GOCHU1');
+function RoomDialog({open,onClose,onCreate,onJoin,loading,error,defaultCode=''}){
+  const [roomCode,setRoomCode]=useState(defaultCode||'GOCHU1');
   const [adminKey,setAdminKey]=useState('');
+  useEffect(()=>{if(open&&defaultCode)setRoomCode(defaultCode)},[open,defaultCode]);
   if(!open)return null;
   return <div className="room-modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)onClose()}}>
     <section className="room-modal">
@@ -119,7 +121,38 @@ function RoomDialog({open,onClose,onCreate,onJoin,loading,error}){
         <button disabled={loading||!roomCode||adminKey.length<4} onClick={()=>onJoin(roomCode,adminKey)}><Wifi size={16}/> 기존 방 접속</button>
         <button className="primary-btn" disabled={loading||!roomCode||adminKey.length<4} onClick={()=>onCreate(roomCode,adminKey)}><Plus size={16}/> 새 방 만들기</button>
       </div>
-      <small>운영 비밀번호는 최소 4자입니다. 관전자는 비밀번호 없이 관전자 링크로 접속합니다.</small>
+      <small>운영 비밀번호는 최소 4자입니다. 방마다 데이터가 완전히 분리되어 A조·B조가 동시에 사용할 수 있습니다.</small>
+    </section>
+  </div>;
+}
+
+
+function RoomLobby({open,onClose,rooms,loading,error,onRefresh,onCreate,onJoin,onDelete,onClone}){
+  const [search,setSearch]=useState('');
+  if(!open)return null;
+  const q=search.trim().toLowerCase();
+  const filtered=rooms.filter(r=>!q||r.room_code.toLowerCase().includes(q)||(r.title||'').toLowerCase().includes(q));
+  const statusOf=(r)=>{
+    const ps=Array.isArray(r.state?.players)?r.state.players.filter(p=>p.inAuction!==false):[];
+    if(ps.length&&ps.every(p=>p.status!=='waiting'))return ['종료','done'];
+    if(r.state?.currentPlayerId||ps.some(p=>p.status!=='waiting'))return ['경매중','live'];
+    return ['대기중','wait'];
+  };
+  return <div className="room-modal-backdrop room-lobby-backdrop">
+    <section className="room-lobby">
+      <header><div><span>ONLINE ROOM DIRECTORY</span><h2>경매 방 목록</h2><p>A조·B조·C조처럼 필요한 만큼 독립된 방을 만들어 동시에 운영할 수 있습니다.</p></div><button className="room-modal-close" onClick={onClose}><X size={20}/></button></header>
+      <div className="room-lobby-tools"><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="방 코드 또는 대회 이름 검색"/><button onClick={onRefresh} disabled={loading}>새로고침</button><button className="primary-btn" onClick={onCreate}><Plus size={16}/> 새 방 만들기</button></div>
+      {error&&<div className="room-error">{error}</div>}
+      <div className="room-directory">
+        {filtered.map(r=>{const [label,cls]=statusOf(r);const st=r.state||{};const playerCount=(st.players||[]).filter(p=>p.inAuction!==false).length;const teamCount=(st.teams||[]).length||st.settings?.teamCount||0;return <article className="room-directory-card" key={r.room_code}>
+          <div className="room-code-badge">{r.room_code.slice(0,3)}</div>
+          <div className="room-directory-info"><div><b>{r.room_code}</b><span className={`room-state ${cls}`}>{label}</span></div><h3>{r.title||'이름 없는 경매방'}</h3><p>{teamCount}팀 · 선수 {playerCount}명 · 최근 저장 {new Date(r.updated_at).toLocaleString('ko-KR')}</p></div>
+          <div className="room-directory-actions"><button className="primary-btn" onClick={()=>onJoin(r.room_code)}>접속</button><button onClick={()=>onClone(r)}>복제</button><button className="danger-lite" onClick={()=>onDelete(r.room_code)}>삭제</button></div>
+        </article>})}
+        {!loading&&!filtered.length&&<div className="room-directory-empty">표시할 방이 없습니다. 새 방을 만들어주세요.</div>}
+        {loading&&<div className="room-directory-empty">방 목록을 불러오는 중...</div>}
+      </div>
+      <footer><small>접속·삭제는 해당 방의 운영 비밀번호가 필요합니다. 방 데이터는 서로 완전히 분리됩니다.</small></footer>
     </section>
   </div>;
 }
@@ -170,7 +203,7 @@ function Auction({
   players,setPlayers,teams,setTeams,settings,recent,setRecent,
   currentPlayerId,setCurrentPlayerId,
   spectatorEvent,setSpectatorEvent,unsoldList,setUnsoldList,onStateChanged,
-  undoStack,setUndoStack,auctionLog,setAuctionLog
+  undoStack,setUndoStack,auctionLog,setAuctionLog,readOnly=false
 }) {
   const [filter,setFilter]=useState('ALL');
   const [view,setView]=useState('board');
@@ -183,6 +216,8 @@ function Auction({
   const [rouletteItems,setRouletteItems]=useState([]);
   const [rouletteStep,setRouletteStep]=useState(0);
   const [overlay,setOverlay]=useState(null);
+  const [roulettePreviewId,setRoulettePreviewId]=useState(null);
+  const spectatorRunRef=useRef(0);
 
 
   const auctionPlayers=players.filter(p=>p.inAuction!==false);
@@ -198,6 +233,67 @@ function Auction({
     if(current)setRouletteName(current.name);
     else if(rouletteName!=='룰렛 대기')setRouletteName('룰렛 대기');
   },[currentPlayerId,current?.name,spinning]);
+
+  useEffect(()=>{
+    if(!readOnly||!spectatorEvent)return;
+    const e=spectatorEvent;
+    if(e.type==='roulette-start'){
+      const runId=++spectatorRunRef.current;
+      const timeline=Array.isArray(e.timeline)?e.timeline:[];
+      setView('board');
+      setSpinning(true);
+      setRouletteMode(e.mode||'normal');
+      setRouletteItems(timeline.map(x=>({id:x.id,name:x.name})));
+      setRouletteStep(0);
+      let i=0;
+      const step=()=>{
+        if(runId!==spectatorRunRef.current)return;
+        if(i>=timeline.length){
+          const picked=e.picked;
+          if(picked){setRouletteName(picked.name);setRoulettePreviewId(picked.id);}
+          setSpinning(false);
+          setTimeout(()=>{if(runId===spectatorRunRef.current)setView('focus')},450);
+          return;
+        }
+        const item=timeline[i];
+        setRouletteName(item.name);
+        setRoulettePreviewId(item.id);
+        setRouletteStep(i);
+        const delay=Math.max(45,Number(item.delay)||90);
+        i+=1;
+        setTimeout(step,delay);
+      };
+      step();
+      return;
+    }
+    if(e.type==='roulette-result'){
+      ++spectatorRunRef.current;
+      setSpinning(false);
+      setRouletteName(e.player?.name||'결과');
+      setRoulettePreviewId(e.player?.id||null);
+      setView('focus');
+      return;
+    }
+    if(e.type==='player-selected'){
+      setRouletteName(e.player?.name||'선수 선택');
+      setRoulettePreviewId(e.player?.id||null);
+      setView('focus');
+      return;
+    }
+    if(e.type==='sold'){
+      ++spectatorRunRef.current;
+      setSpinning(false);
+      setOverlay({type:'sold',player:e.sale?.player||'',team:e.sale?.team||'',price:Number(e.sale?.price||0)});
+      setTimeout(()=>setOverlay(null),2500);
+      return;
+    }
+    if(e.type==='unsold'){
+      ++spectatorRunRef.current;
+      setSpinning(false);
+      setOverlay({type:'unsold',player:e.player||''});
+      setTimeout(()=>setOverlay(null),2100);
+    }
+  },[readOnly,spectatorEvent]);
 
   const pushEvent=(event)=>{
     const next={...event,id:Date.now()};
@@ -218,6 +314,7 @@ function Auction({
   const choosePlayer=(player,openFocus=true)=>{
     if(!player||!['waiting','unsold'].includes(player.status))return;
     setCurrentPlayerId(player.id);
+    setRoulettePreviewId(player.id);
     setRouletteName(player.name);
     setSelectedTeam(null);
     setPriceInput('');
@@ -239,23 +336,29 @@ function Auction({
     setRouletteMode(mode);
     setView('board');
     setSpinning(true);
+    const total=Math.max(26, previewOrder.length*5);
+    const timeline=[];
+    for(let i=0;i<total;i++){
+      const preview=i===total-1?picked:previewOrder[secureRandomIndex(previewOrder.length)];
+      timeline.push({id:preview.id,name:preview.name,delay:Math.min(300,55+(i+1)*8.5)});
+    }
     setRouletteItems(previewOrder);
     setRouletteStep(0);
+    setRoulettePreviewId(null);
     playUiSound('select', settings.sound);
-    pushEvent({type:'roulette-start',mode});
+    pushEvent({type:'roulette-start',mode,timeline,picked:{id:picked.id,name:picked.name,tier:picked.tier,main:picked.main,sub:picked.sub}});
 
     let tick=0;
-    const total=Math.max(26, previewOrder.length*5);
     const run=()=>{
-      const preview=tick===total-1?picked:previewOrder[secureRandomIndex(previewOrder.length)];
-      setRouletteStep(tick%previewOrder.length);
+      const preview=timeline[tick];
+      setRouletteStep(tick%Math.max(1,previewOrder.length));
       setRouletteName(preview.name);
-      setCurrentPlayerId(preview.id);
+      setRoulettePreviewId(preview.id);
       if(tick%2===0)playUiSound('tick',settings.sound);
-      pushEvent({type:'roulette-preview',name:preview.name,mode});
       tick+=1;
-      if(tick>=total){
+      if(tick>=timeline.length){
         setRouletteName(picked.name);
+        setRoulettePreviewId(picked.id);
         setCurrentPlayerId(picked.id);
         pushEvent({type:'roulette-result',player:picked,mode});
         playUiSound('result',settings.sound);
@@ -263,8 +366,7 @@ function Auction({
         setTimeout(()=>setView('focus'),650);
         return;
       }
-      const delay=Math.min(300,55+tick*8.5);
-      setTimeout(run,delay);
+      setTimeout(run,Math.max(45,Number(preview.delay)||90));
     };
     run();
   };
@@ -328,6 +430,7 @@ function Auction({
 
     setAssignModal(false);
     setCurrentPlayerId(null);
+    setRoulettePreviewId(null);
     setRouletteName('룰렛 대기');
     setSelectedTeam(null);
     setView('board');
@@ -352,6 +455,7 @@ function Auction({
     playUiSound('unsold', settings.sound);
     pushEvent({type:'unsold',player:current.name,entry});
     setCurrentPlayerId(null);
+    setRoulettePreviewId(null);
     setRouletteName('룰렛 대기');
     setView('board');
     setTimeout(()=>setOverlay(null),1500);
@@ -409,7 +513,7 @@ function Auction({
   };
 
   const PlayerCard=({player})=>{
-    const active=player.id===currentPlayerId&&['waiting','unsold'].includes(player.status);
+    const active=(player.id===(spinning?roulettePreviewId:currentPlayerId))&&['waiting','unsold'].includes(player.status);
     const sold=player.status==='sold';
     const unsold=player.status==='unsold';
     const team=teams.find(t=>t.id===player.soldTeamId);
@@ -606,6 +710,14 @@ function Players({players,setPlayers,savePlayerSlot,loadPlayerSlot,playerSlots,o
   const [search,setSearch]=useState('');
   const [selectionFilter,setSelectionFilter]=useState('ALL');
   const [draftSelection,setDraftSelection]=useState(()=>new Set(players.filter(p=>p.inAuction!==false).map(p=>p.id)));
+  const importRef=useRef(null);
+  const exportPlayers=()=>{
+    const blob=new Blob([JSON.stringify({version:1,exportedAt:new Date().toISOString(),players},null,2)],{type:'application/json'});
+    const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`gochubat-players-${Date.now()}.json`;a.click();URL.revokeObjectURL(url);
+  };
+  const importPlayers=async(file)=>{
+    try{const raw=JSON.parse(await file.text());const list=Array.isArray(raw)?raw:raw.players;if(!Array.isArray(list))throw new Error();if(!confirm(`${list.length}명의 선수 명단을 불러와 현재 목록을 교체할까요?`))return;setPlayers(list.map((p,i)=>({id:p.id||Date.now()+i,name:String(p.name||'선수'),tier:TIERS.includes(p.tier)?p.tier:'마스터',main:ROLES.includes(p.main)?p.main:'TOP',sub:ROLES.includes(p.sub)?p.sub:'없음',status:'waiting',excluded:false,inAuction:p.inAuction!==false,imageUrl:p.imageUrl||''})));}catch{alert('올바른 선수 명단 JSON 파일이 아닙니다.')}finally{if(importRef.current)importRef.current.value='';}
+  };
 
   useEffect(()=>{
     setDraftSelection(new Set(players.filter(p=>p.inAuction!==false).map(p=>p.id)));
@@ -634,7 +746,7 @@ function Players({players,setPlayers,savePlayerSlot,loadPlayerSlot,playerSlots,o
 
   return <section className="panel full-panel">
     <div className="panel-title"><div><span>PLAYER DATABASE</span><h2>선수 관리</h2></div><b>{players.length}명 등록</b></div>
-    <div className="slot-toolbar"><input value={slotName} onChange={e=>setSlotName(e.target.value)} placeholder="명단 슬롯 이름"/><button onClick={()=>savePlayerSlot(slotName)}>명단 저장</button><select onChange={e=>e.target.value&&loadPlayerSlot(e.target.value)} defaultValue=""><option value="">저장 명단 불러오기</option>{playerSlots.map(x=><option key={x.name} value={x.name}>{x.name} · {x.players.length}명</option>)}</select></div>
+    <div className="slot-toolbar"><input value={slotName} onChange={e=>setSlotName(e.target.value)} placeholder="명단 슬롯 이름"/><button onClick={()=>savePlayerSlot(slotName)}>명단 저장</button><select onChange={e=>e.target.value&&loadPlayerSlot(e.target.value)} defaultValue=""><option value="">저장 명단 불러오기</option>{playerSlots.map(x=><option key={x.name} value={x.name}>{x.name} · {x.players.length}명</option>)}</select><button onClick={exportPlayers}>JSON 내보내기</button><button onClick={()=>importRef.current?.click()}>JSON 불러오기</button><input ref={importRef} type="file" accept="application/json,.json" hidden onChange={e=>e.target.files?.[0]&&importPlayers(e.target.files[0])}/></div>
     <div className="player-form">
       <input value={f.name} onChange={e=>setF({...f,name:e.target.value})} onKeyDown={e=>e.key==='Enter'&&add()} placeholder="선수 이름"/>
       <select value={f.tier} onChange={e=>setF({...f,tier:e.target.value})}>{TIERS.map(t=><option key={t}>{t}</option>)}</select>
@@ -1104,14 +1216,22 @@ function Presentation({settings,teams,players,recent,currentPlayerId,livePrice,l
 
 export default function Home(){
   const [active,setActive]=useState('auction');
-  const [pageMode,setPageMode]=useState('admin');
-  const [watchRoom,setWatchRoom]=useState('');
   const [roomDialog,setRoomDialog]=useState(false);
+  const [roomLobby,setRoomLobby]=useState(false);
+  const [roomList,setRoomList]=useState([]);
+  const [roomListBusy,setRoomListBusy]=useState(false);
+  const [roomListError,setRoomListError]=useState('');
+  const [requestedRoomCode,setRequestedRoomCode]=useState('');
   const [roomBusy,setRoomBusy]=useState(false);
   const [roomError,setRoomError]=useState('');
   const [syncError,setSyncError]=useState('');
   const applyingRemoteRef=useRef(false);
   const syncReadyRef=useRef(false);
+  const clientIdRef=useRef(`client-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  const syncSeqRef=useRef(0);
+  const latestSharedStateRef=useRef(null);
+  const pendingSyncRef=useRef(null);
+  const syncWritingRef=useRef(false);
   useEffect(()=>{const fn=()=>setActive('teams');window.addEventListener('go-team-list',fn);return()=>window.removeEventListener('go-team-list',fn)},[]);
   const [settings,setSettings]=useState(DEFAULT_SETTINGS);
   const [players,setPlayers]=useState(DEFAULT_PLAYERS);
@@ -1130,17 +1250,17 @@ export default function Home(){
 
   useEffect(()=>{
     const params=new URLSearchParams(window.location.search);
-    const mode=params.get('mode');
-    const room=(params.get('room')||'').toUpperCase();
-    if(mode==='watch'&&room){
-      setPageMode('watch');setWatchRoom(room);setRoomStatus({connected:true,roomCode:room,adminKey:'',role:'watch'});
-    }else{
-      try{const saved=JSON.parse(sessionStorage.getItem(ROOM_SESSION_KEY)||'null');if(saved?.roomCode&&saved?.adminKey)setRoomStatus({connected:true,roomCode:saved.roomCode,adminKey:saved.adminKey,role:'admin'});}catch{}
-    }
+    const roomFromUrl=(params.get('room')||'').toUpperCase();
+    try{
+      const saved=JSON.parse(sessionStorage.getItem(ROOM_SESSION_KEY)||'null');
+      if(saved?.roomCode&&saved?.adminKey)setRoomStatus({connected:true,roomCode:saved.roomCode,adminKey:saved.adminKey,role:'admin'});
+      else if(roomFromUrl){setRequestedRoomCode(roomFromUrl);setRoomDialog(true);}
+      else setRoomLobby(true);
+    }catch{}
     try{const raw=localStorage.getItem(KEY);if(raw){const x=JSON.parse(raw);const st={...DEFAULT_SETTINGS,...x.settings};setSettings(st);setPlayers((x.players||DEFAULT_PLAYERS).map(p=>({...p,inAuction:p.inAuction!==false})));setTeams(makeTeams(st,x.teams||[]));setRecent(x.recent||[]);setAuctionLog(x.auctionLog||[]);setCurrentPlayerId(x.currentPlayerId??null);setUnsoldList(x.unsoldList||[]);const u=localStorage.getItem(UNDO_KEY);if(u)setUndoStack(JSON.parse(u));const ps=localStorage.getItem(PLAYER_SLOT_KEY);if(ps)setPlayerSlots(JSON.parse(ps));}}catch{}
     setReady(true)
   },[]);
-  useEffect(()=>{if(ready&&pageMode==='admin')localStorage.setItem(KEY,JSON.stringify({settings,players,teams,recent,auctionLog,currentPlayerId,unsoldList}));localStorage.setItem(UNDO_KEY,JSON.stringify(undoStack));localStorage.setItem(PLAYER_SLOT_KEY,JSON.stringify(playerSlots));},[ready,pageMode,settings,players,teams,recent,auctionLog,currentPlayerId,unsoldList,undoStack,playerSlots]);
+  useEffect(()=>{if(ready)localStorage.setItem(KEY,JSON.stringify({settings,players,teams,recent,auctionLog,currentPlayerId,unsoldList}));localStorage.setItem(UNDO_KEY,JSON.stringify(undoStack));localStorage.setItem(PLAYER_SLOT_KEY,JSON.stringify(playerSlots));},[ready,settings,players,teams,recent,auctionLog,currentPlayerId,unsoldList,undoStack,playerSlots]);
 
   const savePlayerSlot=(name)=>{const n=(name||'새 명단').trim();const next=[{name:n,players:players.map(({soldTeamId,soldPrice,...p})=>({...p,status:'waiting',excluded:false})) ,savedAt:Date.now()},...playerSlots.filter(x=>x.name!==n)].slice(0,20);setPlayerSlots(next);alert(`명단 저장 완료: ${n}`)};
   const loadPlayerSlot=(name)=>{const slot=playerSlots.find(x=>x.name===name);if(!slot)return;if(!confirm(`${name} 명단을 불러오면 현재 선수 목록이 교체됩니다. 계속할까요?`))return;setPlayers(slot.players.map(p=>({...p,inAuction:p.inAuction!==false,status:'waiting',excluded:false,soldTeamId:null,soldPrice:null})));setTeams(makeTeams(settings));setRecent([]);setAuctionLog([]);setUnsoldList([]);setCurrentPlayerId(null)};
@@ -1158,16 +1278,49 @@ export default function Home(){
   };
 
   const sharedState=()=>({settings,players,teams,recent,auctionLog,unsoldList,currentPlayerId,livePrice,liveTeamName,spectatorEvent});
+  latestSharedStateRef.current=sharedState();
+
   const applyRemoteState=(x={})=>{
+    // 내가 방금 보낸 오래된 응답이 다시 들어와 최신 로컬 상태를 덮는 문제를 막습니다.
+    if(roomStatus.role==='admin'&&x?._syncClient===clientIdRef.current)return;
     applyingRemoteRef.current=true;
     if(x.settings)setSettings(x.settings);if(x.players)setPlayers(x.players);if(x.teams)setTeams(x.teams);if(x.recent)setRecent(x.recent);if(x.auctionLog)setAuctionLog(x.auctionLog);if(x.unsoldList)setUnsoldList(x.unsoldList);if('currentPlayerId'in x)setCurrentPlayerId(x.currentPlayerId);if('spectatorEvent'in x)setSpectatorEvent(x.spectatorEvent);if('livePrice'in x)setLivePrice(x.livePrice||0);if('liveTeamName'in x)setLiveTeamName(x.liveTeamName||'');
-    setTimeout(()=>{applyingRemoteRef.current=false},350);
+    setTimeout(()=>{applyingRemoteRef.current=false},120);
   };
-  const onStateChanged=async(extra={})=>{
+
+  const flushSyncQueue=async()=>{
+    if(syncWritingRef.current)return;
+    syncWritingRef.current=true;
+    try{
+      while(pendingSyncRef.current){
+        const payload=pendingSyncRef.current;
+        pendingSyncRef.current=null;
+        const {error}=await supabase.rpc('update_auction_room',{
+          p_room_code:roomStatus.roomCode,
+          p_admin_key:roomStatus.adminKey,
+          p_state:payload,
+          p_event:payload.spectatorEvent||null
+        });
+        if(error){setSyncError(error.message||'동기화 실패');break;}
+        setSyncError('');
+      }
+    } finally {
+      syncWritingRef.current=false;
+      if(pendingSyncRef.current)flushSyncQueue();
+    }
+  };
+
+  const onStateChanged=(extra={})=>{
     if(!supabase||!roomStatus.connected||roomStatus.role!=='admin'||!roomStatus.adminKey)return;
-    const next={...sharedState(),...extra};
-    const {error}=await supabase.rpc('update_auction_room',{p_room_code:roomStatus.roomCode,p_admin_key:roomStatus.adminKey,p_state:next,p_event:extra.spectatorEvent||spectatorEvent||null});
-    if(error)setSyncError(error.message||'동기화 실패');
+    const seq=++syncSeqRef.current;
+    pendingSyncRef.current={
+      ...(latestSharedStateRef.current||sharedState()),
+      ...extra,
+      _syncClient:clientIdRef.current,
+      _syncSeq:seq,
+      _syncAt:Date.now()
+    };
+    flushSyncQueue();
   };
 
   useEffect(()=>{
@@ -1176,18 +1329,31 @@ export default function Home(){
     (async()=>{
       const {data,error}=await supabase.from('auction_rooms').select('state').eq('room_code',roomStatus.roomCode).maybeSingle();
       if(!alive)return;
-      if(error||!data){setSyncError(pageMode==='watch'?'존재하지 않는 관전자 방입니다.':'온라인 방을 불러오지 못했습니다.');return;}
+      if(error||!data){setSyncError('온라인 방을 불러오지 못했습니다.');return;}
       applyRemoteState(data.state||{});syncReadyRef.current=true;
       ch=supabase.channel(`room-${roomStatus.roomCode}-${Math.random()}`).on('postgres_changes',{event:'UPDATE',schema:'public',table:'auction_rooms',filter:`room_code=eq.${roomStatus.roomCode}`},({new:n})=>applyRemoteState(n.state||{})).subscribe(status=>{if(status==='CHANNEL_ERROR')setSyncError('실시간 연결이 끊겼습니다.')});
     })();
     return()=>{alive=false;syncReadyRef.current=false;if(ch)supabase.removeChannel(ch)};
-  },[roomStatus.connected,roomStatus.roomCode,pageMode]);
+  },[roomStatus.connected,roomStatus.roomCode]);
 
   useEffect(()=>{
     if(!ready||!supabase||!roomStatus.connected||roomStatus.role!=='admin'||!roomStatus.adminKey||!syncReadyRef.current||applyingRemoteRef.current)return;
-    const timer=setTimeout(()=>onStateChanged(),120);
+    const timer=setTimeout(()=>onStateChanged(),80);
     return()=>clearTimeout(timer);
   },[ready,roomStatus.connected,roomStatus.role,roomStatus.roomCode,roomStatus.adminKey,settings,players,teams,recent,auctionLog,unsoldList,currentPlayerId,livePrice,liveTeamName,spectatorEvent]);
+
+  const fetchRooms=async()=>{
+    if(!supabase){setRoomListError('Supabase 환경 변수가 설정되지 않았습니다.');return;}
+    setRoomListBusy(true);setRoomListError('');
+    const {data,error}=await supabase.from('auction_rooms').select('room_code,state,updated_at').order('updated_at',{ascending:false});
+    setRoomListBusy(false);
+    if(error){setRoomListError(error.message||'방 목록을 불러오지 못했습니다.');return;}
+    setRoomList((data||[]).map(r=>({...r,title:r.state?.settings?.title||r.room_code})));
+  };
+  useEffect(()=>{if(roomLobby)fetchRooms()},[roomLobby]);
+  const lobbyJoin=async(code)=>{const key=prompt(`${code} 방 운영 비밀번호를 입력하세요.`,'');if(!key)return;await joinRoom(code,key);};
+  const lobbyDelete=async(code)=>{const key=prompt(`${code} 방을 삭제하려면 운영 비밀번호를 입력하세요.`,'');if(!key)return;if(!confirm(`${code} 방과 저장된 경매 데이터를 완전히 삭제할까요?`))return;const {error}=await supabase.rpc('delete_auction_room',{p_room_code:code,p_admin_key:key});if(error)return alert(error.message||'방 삭제에 실패했습니다.');if(roomStatus.roomCode===code){sessionStorage.removeItem(ROOM_SESSION_KEY);setRoomStatus({connected:false,roomCode:'',adminKey:'',role:'local'});}await fetchRooms();};
+  const lobbyClone=async(room)=>{const code=(prompt('복제할 새 방 코드를 입력하세요.','')||'').trim().toUpperCase().replace(/[^A-Z0-9_-]/g,'');if(!code)return;const key=prompt('새 방에서 사용할 운영 비밀번호를 입력하세요.','');if(!key||key.length<4)return alert('운영 비밀번호는 최소 4자입니다.');const src=room.state||{};const clone={...src,settings:{...(src.settings||DEFAULT_SETTINGS),title:`${src.settings?.title||room.room_code} 복사본`},players:(src.players||[]).map(p=>({...p,status:'waiting',excluded:false,soldTeamId:null,soldPrice:null})),teams:makeTeams(src.settings||DEFAULT_SETTINGS),recent:[],auctionLog:[],unsoldList:[],currentPlayerId:null,livePrice:0,liveTeamName:'',spectatorEvent:null};const {error}=await supabase.rpc('create_auction_room',{p_room_code:code,p_admin_key:key,p_state:clone});if(error)return alert(error.message?.includes('duplicate')?'이미 존재하는 방 코드입니다.':error.message);alert(`${code} 방으로 템플릿을 복제했습니다.`);await fetchRooms();};
 
   const createRoom=async(code,key)=>{
     if(!supabase)return setRoomError('Supabase 환경 변수가 설정되지 않았습니다.');
@@ -1196,7 +1362,7 @@ export default function Home(){
     const {error}=await supabase.rpc('create_auction_room',{p_room_code:roomCode,p_admin_key:key,p_state:sharedState()});
     setRoomBusy(false);
     if(error){setRoomError(error.message?.includes('duplicate')?'이미 존재하는 방 코드입니다. 기존 방 접속을 눌러주세요.':error.message);return;}
-    const next={connected:true,roomCode,adminKey:key,role:'admin'};setRoomStatus(next);sessionStorage.setItem(ROOM_SESSION_KEY,JSON.stringify({roomCode,adminKey:key}));setRoomDialog(false);
+    const next={connected:true,roomCode,adminKey:key,role:'admin'};setRoomStatus(next);sessionStorage.setItem(ROOM_SESSION_KEY,JSON.stringify({roomCode,adminKey:key}));setRoomDialog(false);setRoomLobby(false);
   };
   const joinRoom=async(code,key)=>{
     if(!supabase)return setRoomError('Supabase 환경 변수가 설정되지 않았습니다.');
@@ -1204,21 +1370,22 @@ export default function Home(){
     const {data,error}=await supabase.rpc('verify_auction_room',{p_room_code:roomCode,p_admin_key:key});
     setRoomBusy(false);
     if(error){setRoomError(error.message);return;}if(!data){setRoomError('방 코드 또는 운영 비밀번호가 올바르지 않습니다.');return;}
-    const next={connected:true,roomCode,adminKey:key,role:'admin'};setRoomStatus(next);sessionStorage.setItem(ROOM_SESSION_KEY,JSON.stringify({roomCode,adminKey:key}));setRoomDialog(false);
+    const next={connected:true,roomCode,adminKey:key,role:'admin'};setRoomStatus(next);sessionStorage.setItem(ROOM_SESSION_KEY,JSON.stringify({roomCode,adminKey:key}));setRoomDialog(false);setRoomLobby(false);
   };
   const disconnectRoom=()=>{if(!confirm('온라인 방 연결을 해제하고 로컬 모드로 돌아갈까요? 방 데이터는 삭제되지 않습니다.'))return;sessionStorage.removeItem(ROOM_SESSION_KEY);setRoomStatus({connected:false,roomCode:'',adminKey:'',role:'local'});syncReadyRef.current=false;};
+  const deleteRoom=async()=>{
+    if(!roomStatus.connected||!roomStatus.adminKey)return;
+    const typed=prompt(`방 ${roomStatus.roomCode}을 완전히 삭제합니다. 확인을 위해 방 코드를 입력하세요.`,'');
+    if((typed||'').trim().toUpperCase()!==roomStatus.roomCode)return alert('방 코드가 일치하지 않아 삭제를 취소했습니다.');
+    const {error}=await supabase.rpc('delete_auction_room',{p_room_code:roomStatus.roomCode,p_admin_key:roomStatus.adminKey});
+    if(error)return alert(error.message||'방 삭제에 실패했습니다.');
+    sessionStorage.removeItem(ROOM_SESSION_KEY);
+    setRoomStatus({connected:false,roomCode:'',adminKey:'',role:'local'});
+    syncReadyRef.current=false;
+    alert('온라인 방이 삭제되었습니다. 같은 방 코드로 새 방을 만들 수 있습니다.');
+  };
   const copyText=async(text,msg)=>{try{await navigator.clipboard.writeText(text);alert(msg)}catch{prompt('아래 주소를 복사하세요.',text)}};
-  const watchUrl=()=>`${window.location.origin}${window.location.pathname}?mode=watch&room=${encodeURIComponent(roomStatus.roomCode)}`;
   const adminUrl=()=>`${window.location.origin}${window.location.pathname}?room=${encodeURIComponent(roomStatus.roomCode)}`;
-
-  if(pageMode==='watch')return <main className="watch-mirror-shell">
-    <WatchConnection roomCode={watchRoom} status={syncError?'error':'connected'} error={syncError}/>
-    <div className="watch-mirror-lock">
-      <Auction players={players} setPlayers={()=>{}} teams={teams} setTeams={()=>{}} settings={settings} recent={recent} setRecent={()=>{}} currentPlayerId={currentPlayerId} setCurrentPlayerId={()=>{}}
-        spectatorEvent={spectatorEvent} setSpectatorEvent={()=>{}} unsoldList={unsoldList} setUnsoldList={()=>{}} onStateChanged={()=>{}} undoStack={[]} setUndoStack={()=>{}} auctionLog={auctionLog} setAuctionLog={()=>{}}/>
-    </div>
-    <div className="watch-readonly-note">관전자 화면 · 조작 기능은 비활성화되어 있습니다.</div>
-  </main>;
 
   let view=<Auction players={players} setPlayers={setPlayers} teams={teams} setTeams={setTeams} settings={settings} recent={recent} setRecent={setRecent} currentPlayerId={currentPlayerId} setCurrentPlayerId={setCurrentPlayerId}
       spectatorEvent={spectatorEvent} setSpectatorEvent={setSpectatorEvent} unsoldList={unsoldList} setUnsoldList={setUnsoldList} onStateChanged={onStateChanged} undoStack={undoStack} setUndoStack={setUndoStack} auctionLog={auctionLog} setAuctionLog={setAuctionLog}/>;
@@ -1227,8 +1394,9 @@ export default function Home(){
   if(active==='players')view=<Players players={players} setPlayers={setPlayers} savePlayerSlot={savePlayerSlot} loadPlayerSlot={loadPlayerSlot} playerSlots={playerSlots} onApplyAuctionSelection={applyAuctionSelection}/>;
   if(active==='settings')view=<SettingsView settings={settings} setSettings={setSettings} teams={teams} setTeams={setTeams} onResetAll={resetAll}/>;
   return <>
-    <AppShell active={active} setActive={setActive} settings={settings} roomStatus={roomStatus} onOpenRoom={()=>{setRoomError('');setRoomDialog(true)}} onDisconnect={disconnectRoom} onCopyWatch={()=>copyText(watchUrl(),'관전자 링크를 복사했습니다.')} onCopyAdmin={()=>copyText(adminUrl(),'운영자 접속 주소를 복사했습니다. 비밀번호는 따로 전달하세요.')}>{view}</AppShell>
-    <RoomDialog open={roomDialog} onClose={()=>setRoomDialog(false)} onCreate={createRoom} onJoin={joinRoom} loading={roomBusy} error={roomError}/>
+    <AppShell active={active} setActive={setActive} settings={settings} roomStatus={roomStatus} onOpenRoom={()=>{setRoomError('');setRoomDialog(true)}} onOpenLobby={()=>setRoomLobby(true)} onDisconnect={disconnectRoom} onDeleteRoom={deleteRoom} onCopyAdmin={()=>copyText(adminUrl(),'운영자 접속 주소를 복사했습니다. 비밀번호는 따로 전달하세요.')}>{view}</AppShell>
+    <RoomLobby open={roomLobby} onClose={()=>setRoomLobby(false)} rooms={roomList} loading={roomListBusy} error={roomListError} onRefresh={fetchRooms} onCreate={()=>{setRoomLobby(false);setRoomError('');setRoomDialog(true)}} onJoin={lobbyJoin} onDelete={lobbyDelete} onClone={lobbyClone}/>
+    <RoomDialog open={roomDialog} onClose={()=>setRoomDialog(false)} onCreate={createRoom} onJoin={joinRoom} loading={roomBusy} error={roomError} defaultCode={requestedRoomCode}/>
     {syncError&&roomStatus.connected&&<div className="sync-error-toast">{syncError}</div>}
   </>;
 }
