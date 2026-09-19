@@ -31,3 +31,7 @@ begin
 end $$;
 grant execute on function public.read_auction_player_library(text) to anon,authenticated;
 grant execute on function public.write_auction_player_library(text,jsonb) to anon,authenticated;
+
+-- v4.2: players JSON now includes a stable libraryId per player.
+-- No schema migration is required from v4.1; existing rows are upgraded naturally
+-- the next time the player DB is edited/saved from the website.
