@@ -3611,3 +3611,631 @@ body {background: radial-gradient(ellipse at 48% -8%,rgba(197,139,65,.16),transp
 .command-deck:has(.season-compact-layout){max-width:1800px}.command-deck:has(.season-compact-layout) .arena-filter-bar{padding-top:8px;padding-bottom:8px}.command-deck:has(.season-compact-layout) .arena-status-footer{padding-top:7px;padding-bottom:7px}
 @media(max-width:1350px){.season-compact-layout{grid-template-columns:minmax(380px,1.05fr) minmax(300px,.78fr) minmax(330px,.9fr)}.season-player-row{grid-template-columns:minmax(80px,1fr) 68px 38px 44px}.season-team-grid{grid-template-columns:1fr}}
 @media(max-width:1050px){.season-compact-layout{height:auto;max-height:none;min-height:0;grid-template-columns:1fr}.season-player-columns{height:460px}.season-team-grid{height:420px;grid-template-columns:1fr 1fr}.season-center-stage{min-height:560px}}
+
+/* v4.3 readability + premium polish fixes */
+:root{
+  --ui-panel:#0d1726;
+  --ui-panel-2:#101d31;
+  --ui-line:rgba(120,163,214,.18);
+  --ui-text:#eef5ff;
+  --ui-muted:#aebcd0;
+  --ui-gold:#f0c979;
+}
+
+button, select, input, textarea {
+  font-family: "Pretendard","SUIT","Noto Sans KR",sans-serif;
+}
+
+button:disabled,
+.room-modal-actions button:disabled,
+.library-toolbar button:disabled,
+.permanent-db-shell button:disabled,
+.auction-log-head-actions button:disabled,
+.delete-team-btn:disabled{
+  opacity:1 !important;
+  cursor:not-allowed !important;
+  color:#8ea0b7 !important;
+  background:linear-gradient(180deg,#223042,#162232) !important;
+  border-color:rgba(132,153,180,.18) !important;
+  box-shadow:none !important;
+}
+
+.library-toolbar,
+.library-copy,
+.slot-toolbar,
+.current-room-divider,
+.permanent-db-shell,
+.auction-selection-panel,
+.player-table,
+.season-pool-panel,
+.season-center-stage,
+.season-team-panel,
+.season-team-card,
+.season-current-player,
+.season-mini-log,
+.season-price-box,
+.season-reel,
+.team-mini-card,
+.arena-team-panel,
+.arena-player-card,
+.result-card{
+  border-radius:18px !important;
+}
+
+.library-toolbar,
+.slot-toolbar,
+.current-room-divider,
+.permanent-db-shell,
+.auction-selection-panel,
+.player-table,
+.season-pool-panel,
+.season-center-stage,
+.season-team-panel,
+.arena-team-panel,
+.arena-player-card,
+.season-team-card,
+.season-current-player,
+.season-mini-log,
+.season-price-box,
+.season-reel{
+  border:1px solid var(--ui-line) !important;
+  background:linear-gradient(180deg,rgba(12,22,37,.96),rgba(9,16,29,.96)) !important;
+  box-shadow:0 16px 42px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.04) !important;
+}
+
+.library-explain-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+  margin-top:10px;
+}
+.library-explain-grid>div,
+.slot-help-row span{
+  border:1px solid rgba(98,148,210,.16);
+  background:linear-gradient(180deg,rgba(13,25,43,.92),rgba(11,19,33,.92));
+  border-radius:14px;
+  padding:12px 14px;
+}
+.library-explain-grid b,
+.slot-help-row b{display:block;color:#fff2c6;margin-bottom:5px}
+.library-explain-grid span,
+.slot-help-row{color:var(--ui-muted);font-size:12px;line-height:1.6}
+.slot-help-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
+
+.library-toolbar input,
+.slot-toolbar input,
+.slot-toolbar select,
+.player-form input,
+.player-form select,
+.permanent-register-grid input,
+.permanent-register-grid select,
+.permanent-db-toolbar input,
+.auction-selection-controls input,
+.assign-price-box input,
+.season-price-box input{
+  color:var(--ui-text) !important;
+  background:linear-gradient(180deg,#08131f,#0c1928) !important;
+  border:1px solid rgba(92,149,212,.28) !important;
+  border-radius:14px !important;
+  min-height:46px;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.02);
+}
+.library-toolbar input::placeholder,
+.slot-toolbar input::placeholder,
+.player-form input::placeholder,
+.permanent-register-grid input::placeholder,
+.permanent-db-toolbar input::placeholder,
+.auction-selection-controls input::placeholder,
+.season-price-box input::placeholder{color:#7f93ac}
+
+.library-toolbar button,
+.slot-toolbar button,
+.player-form button,
+.permanent-register-grid button,
+.permanent-db-toolbar button,
+.selection-filter-buttons button,
+.season-roulette-actions button,
+.season-center-actions button,
+.arena-toolbar-actions button,
+.arena-filter-bar button,
+.row-actions button,
+.assign-modal-actions button,
+.team-config-row button,
+.settings-actions button{
+  min-height:46px;
+  padding:0 16px;
+  border-radius:14px !important;
+  border:1px solid rgba(101,156,222,.24) !important;
+  background:linear-gradient(180deg,#173251,#10253d) !important;
+  color:#edf5ff !important;
+  font-weight:800;
+}
+
+.library-toolbar button.primary-btn,
+.permanent-register-grid button.primary-btn,
+.assign-modal-actions .primary-btn,
+.selection-change-notice .primary-btn,
+.season-roulette-actions .primary-btn,
+.primary-btn{
+  background:linear-gradient(135deg,#d7a53b,#f0ce77) !important;
+  color:#1c1306 !important;
+  border-color:rgba(255,219,134,.55) !important;
+  box-shadow:0 10px 22px rgba(210,160,56,.18);
+}
+
+.arena-filter-bar button,
+.selection-filter-buttons button{
+  min-height:40px;
+  padding:0 14px;
+}
+.arena-filter-bar button.active,
+.selection-filter-buttons button.active,
+.slot-toolbar button:hover,
+.library-toolbar button:hover,
+.player-form button:hover,
+.permanent-register-grid button:hover,
+.permanent-db-toolbar button:hover,
+.season-roulette-actions button:hover,
+.season-center-actions button:hover,
+.row-actions button:hover,
+.assign-modal-actions button:hover,
+.arena-toolbar-actions button:hover{
+  filter:brightness(1.07);
+  transform:translateY(-1px);
+}
+
+.arena-roulette-control span,
+.toolbar-reel,
+.toolbar-reel-result{
+  clip-path:none !important;
+  border-radius:16px !important;
+}
+.toolbar-reel{
+  min-height:56px;
+  padding:0 16px !important;
+  border:1px solid rgba(110,164,224,.28);
+  background:linear-gradient(180deg,#12273e,#0d1a2c) !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
+}
+.toolbar-reel-result{font-size:18px !important;color:#f7fbff !important}
+
+.season-team-card,
+.arena-team-panel{
+  overflow:hidden;
+}
+.season-team-card header,
+.arena-team-panel .team-panel-copy{
+  padding-bottom:8px;
+}
+.season-team-card header small,
+.team-panel-copy span{color:#8bb9f3 !important;letter-spacing:.08em}
+.season-team-card header b,
+.team-panel-copy h3{font-size:18px !important;color:#f8fbff !important}
+.season-team-card header strong,
+.team-panel-copy strong{font-size:18px !important;color:var(--ui-gold) !important}
+.season-team-roster span,
+.team-mini-card{
+  border-radius:12px !important;
+  background:rgba(255,255,255,.04) !important;
+  border:1px solid rgba(255,255,255,.06) !important;
+}
+
+.season-current-player h2{font-size:40px !important;line-height:1.1;color:#fff}
+.season-current-player p,.season-center-guide,.season-reel small,.season-team-roster small{color:var(--ui-muted) !important}
+.season-price-box span, .season-panel-head span, .season-mini-log header span {color:#8ec4ff !important}
+.season-price-box em{color:var(--ui-gold) !important}
+
+.season-center-actions,
+.season-roulette-actions{gap:10px !important}
+.season-center-actions button,
+.season-roulette-actions button{box-shadow:0 8px 18px rgba(0,0,0,.18)}
+
+.premium-card-content{
+  justify-content:flex-end;
+  min-height:100%;
+  background:
+    linear-gradient(180deg,rgba(9,16,26,.05) 0%,rgba(7,14,24,.34) 45%,rgba(7,12,20,.88) 100%) !important;
+}
+.premium-tier{font-size:13px !important;color:#93c4ff !important}
+.premium-role{font-size:12px !important;color:#ffd88e !important}
+.premium-name{font-size:34px !important;line-height:1.08 !important;color:#fff !important;text-shadow:0 6px 18px rgba(0,0,0,.45)}
+.arena-player-card.completed .premium-card-content,
+.arena-player-card.unsold .premium-card-content{opacity:.68}
+.premium-card-status-zone{padding:10px 12px 14px !important}
+.picked-crown{
+  border-radius:999px !important;
+  padding:8px 12px !important;
+  background:linear-gradient(135deg,#f4c964,#d89d2d) !important;
+  color:#281b08 !important;
+  transform:none !important;
+  position:static !important;
+  display:inline-flex !important;
+  margin-left:auto;
+}
+
+.table-head,.table-row{align-items:center}
+.table-row{
+  min-height:62px;
+  border-bottom:1px solid rgba(91,128,173,.14) !important;
+}
+.table-row.not-selected{opacity:.82}
+.wait-tag{border-radius:999px !important;padding:7px 10px !important}
+.row-actions{gap:8px !important}
+.row-actions button{min-height:36px;padding:0 12px !important;font-size:11px !important}
+
+.permanent-player-row,
+.history-row,
+.recent-row{
+  border-radius:14px;
+}
+.permanent-player-row{margin:8px;border:1px solid rgba(96,141,196,.12);background:rgba(255,255,255,.025)}
+.permanent-player-row.selected{background:linear-gradient(180deg,rgba(27,64,110,.45),rgba(17,34,56,.88))}
+.permanent-tier{display:inline-flex;align-items:center;justify-content:center;min-width:94px;padding:7px 10px;border-radius:999px;background:rgba(255,218,130,.08);border:1px solid rgba(255,218,130,.18);color:#ffe3a2;font-weight:800}
+
+.season-player-row,
+.option-card,
+.team-config-row,
+.watch-teams>div,
+.presentation-teams article,
+.presentation-side section{
+  border-radius:16px !important;
+}
+.season-player-row{
+  border:1px solid rgba(104,145,198,.16) !important;
+  background:linear-gradient(180deg,#0e1828,#101826) !important;
+}
+.season-player-row.active{border-color:rgba(255,210,107,.5) !important;box-shadow:0 0 0 2px rgba(255,210,107,.16)}
+.season-player-row span,
+.season-player-row em,
+.season-player-row i{color:#d7e3f0 !important}
+.season-player-row small{color:#8ba1b8 !important}
+
+@media (max-width: 900px){
+  .library-explain-grid,
+  .slot-help-row{grid-template-columns:1fr}
+  .slot-toolbar{grid-template-columns:1fr !important}
+}
+
+/* =========================================================
+   v4.3 FINAL POLISH — no spinning ribbon / softer premium UI
+   ========================================================= */
+.primary-btn,
+.pro-bid-actions button,
+.admin-actions button,
+.result-card,
+.spectator-result-card,
+.assign-price-box input,
+.focus-price,
+.arena-roulette-control span,
+.toolbar-reel,
+.toolbar-reel-result,
+.season-team-card,
+.arena-team-panel,
+.arena-player-card{
+  clip-path:none !important;
+}
+
+/* The roulette header is now a stable status card. Names change in place;
+   nothing slides, tilts or spins across the screen. */
+.toolbar-reel{
+  position:relative !important;
+  height:62px !important;
+  min-height:62px !important;
+  display:flex !important;
+  flex-direction:column !important;
+  justify-content:center !important;
+  align-items:flex-start !important;
+  gap:4px !important;
+  overflow:hidden !important;
+  padding:9px 16px !important;
+  border-radius:16px !important;
+  border:1px solid rgba(105,164,225,.32) !important;
+  background:
+    radial-gradient(circle at 8% 0%,rgba(75,154,231,.12),transparent 42%),
+    linear-gradient(180deg,#10243a,#0a1626) !important;
+  box-shadow:0 10px 28px rgba(0,0,0,.24),inset 0 1px 0 rgba(255,255,255,.05) !important;
+}
+.toolbar-reel.is-spinning{
+  border-color:rgba(240,199,113,.48) !important;
+  animation:rouletteSoftGlow .7s ease-in-out infinite alternate;
+}
+@keyframes rouletteSoftGlow{
+  from{box-shadow:0 10px 28px rgba(0,0,0,.24),inset 0 1px 0 rgba(255,255,255,.05)}
+  to{box-shadow:0 10px 28px rgba(0,0,0,.24),0 0 24px rgba(229,181,79,.13),inset 0 1px 0 rgba(255,255,255,.06)}
+}
+.toolbar-reel-track{display:none !important;transform:none !important;animation:none !important}
+.toolbar-reel-kicker{
+  display:block !important;
+  min-width:0 !important;
+  padding:0 !important;
+  border:0 !important;
+  background:none !important;
+  color:#89a7c9 !important;
+  font-size:8px !important;
+  font-weight:900 !important;
+  letter-spacing:1.7px !important;
+  line-height:1 !important;
+}
+.toolbar-reel-result,
+.toolbar-reel.is-spinning .toolbar-reel-result,
+.toolbar-reel.is-idle .toolbar-reel-result{
+  position:static !important;
+  inset:auto !important;
+  display:block !important;
+  width:100% !important;
+  min-width:0 !important;
+  margin:0 !important;
+  padding:0 !important;
+  border:0 !important;
+  background:none !important;
+  color:#f8fbff !important;
+  font-size:20px !important;
+  font-weight:950 !important;
+  line-height:1.15 !important;
+  text-align:left !important;
+  white-space:nowrap !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+  transform:none !important;
+  animation:none !important;
+}
+
+/* Softer team cards: dark glass surface + team accent instead of giant color slabs. */
+.arena-team-panel.palette-0,.season-team-card.palette-0{--team-accent:#4da8ff}
+.arena-team-panel.palette-1,.season-team-card.palette-1{--team-accent:#ff6677}
+.arena-team-panel.palette-2,.season-team-card.palette-2{--team-accent:#f3b94f}
+.arena-team-panel.palette-3,.season-team-card.palette-3{--team-accent:#9d78ff}
+.arena-team-panel.palette-4,.season-team-card.palette-4{--team-accent:#52d69a}
+.arena-team-panel.palette-5,.season-team-card.palette-5{--team-accent:#4ec7d8}
+.arena-team-panel.palette-6,.season-team-card.palette-6{--team-accent:#e3bd58}
+.arena-team-panel.palette-7,.season-team-card.palette-7{--team-accent:#8fa6c9}
+.arena-team-panel.palette-0,.arena-team-panel.palette-1,.arena-team-panel.palette-2,.arena-team-panel.palette-3,
+.arena-team-panel.palette-4,.arena-team-panel.palette-5,.arena-team-panel.palette-6,.arena-team-panel.palette-7,
+.season-team-card.palette-0,.season-team-card.palette-1,.season-team-card.palette-2,.season-team-card.palette-3,
+.season-team-card.palette-4,.season-team-card.palette-5,.season-team-card.palette-6,.season-team-card.palette-7{
+  background:
+    linear-gradient(90deg,color-mix(in srgb,var(--team-accent) 11%,transparent),transparent 42%),
+    linear-gradient(180deg,#111d2e,#0c1625) !important;
+  border:1px solid rgba(120,158,205,.16) !important;
+  border-left:4px solid var(--team-accent) !important;
+  box-shadow:0 12px 30px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.035) !important;
+}
+.arena-team-panel:hover,.arena-team-panel.team-selected,.season-team-card.clickable:hover{
+  transform:translateY(-2px) !important;
+  filter:none !important;
+  border-color:color-mix(in srgb,var(--team-accent) 44%,rgba(120,158,205,.16)) !important;
+  border-left-color:var(--team-accent) !important;
+  box-shadow:0 16px 34px rgba(0,0,0,.28),0 0 0 1px color-mix(in srgb,var(--team-accent) 14%,transparent) !important;
+}
+
+.team-panel-copy{
+  border-radius:12px !important;
+  padding:10px 12px !important;
+  background:rgba(255,255,255,.025) !important;
+}
+.team-mini-card{
+  min-height:74px !important;
+  border-radius:14px !important;
+}
+
+/* Make every disabled action readable instead of white text on a pale button. */
+button:disabled,
+button[disabled]{
+  opacity:1 !important;
+  color:#8193aa !important;
+  background:linear-gradient(180deg,#1b2838,#121d2b) !important;
+  border-color:rgba(127,151,181,.16) !important;
+  text-shadow:none !important;
+  box-shadow:none !important;
+  transform:none !important;
+  filter:none !important;
+}
+
+/* Saved rosters are shared between all rooms on this browser. */
+.slot-toolbar{
+  grid-template-columns:minmax(220px,1.1fr) auto minmax(250px,1fr) auto auto !important;
+  gap:10px !important;
+  align-items:stretch !important;
+  padding:16px !important;
+}
+.slot-toolbar>*{min-width:0}
+.slot-help-row{margin-bottom:16px}
+
+/* Cleaner permanent-player area. */
+.library-hero,.permanent-db-head{
+  border-radius:20px !important;
+}
+.library-toolbar small{color:#aebdd0 !important;font-size:12px !important;line-height:1.55 !important}
+.library-explain-grid>div{min-height:78px}
+.library-explain-grid b{font-size:13px}
+
+/* General readability. */
+.panel-title h2,.command-overview h2,.season-panel-head h3,.current-room-divider h3{color:#f7fbff !important}
+.panel-title span,.command-overview span,.current-room-divider span{color:#e8ba68 !important}
+.panel-title b,.command-metrics strong,.season-panel-head strong{color:#f1c873 !important}
+.selection-empty,.empty-state,.season-mini-log small{color:#8fa2ba !important}
+
+@media(max-width:1200px){
+  .slot-toolbar{grid-template-columns:1fr 1fr !important}
+  .slot-toolbar select{grid-column:1/-1}
+}
+@media(max-width:700px){
+  .slot-toolbar{grid-template-columns:1fr !important}
+  .slot-toolbar select{grid-column:auto}
+  .arena-roulette-control.dual.inline-control{grid-template-columns:1fr !important}
+  .arena-roulette-control.dual.inline-control>div:last-child{grid-template-columns:1fr 1fr !important}
+}
+
+/* =========================================================
+   v4.3.1 visual alignment + calm roulette + premium team board
+   ========================================================= */
+.command-overview{display:none!important}
+.command-deck{border-radius:26px!important;overflow:hidden}
+.command-deck .arena-toolbar.premium-toolbar{
+  min-height:112px!important;
+  display:grid!important;
+  grid-template-columns:minmax(330px,1fr) minmax(390px,520px) minmax(330px,1fr)!important;
+  gap:22px!important;
+  align-items:center!important;
+  padding:18px 28px!important;
+  background:
+    radial-gradient(circle at 50% -40%,rgba(77,135,204,.14),transparent 48%),
+    linear-gradient(180deg,#101a2a,#0c1523)!important;
+  border-bottom:1px solid rgba(112,151,199,.18)!important;
+}
+.arena-toolbar-spacer{
+  display:block!important;
+  width:min(100%,360px)!important;
+  min-height:1px!important;
+  justify-self:start!important;
+}
+.premium-toolbar .arena-title{
+  justify-self:center!important;
+  width:100%!important;
+  max-width:520px!important;
+  text-align:center!important;
+}
+.premium-toolbar .arena-title small{
+  color:#8ea3bd!important;
+  letter-spacing:2.2px!important;
+  font-size:9px!important;
+}
+.premium-toolbar .arena-title h2{
+  margin:6px 0 0!important;
+  color:#f5f8fd!important;
+  font-size:34px!important;
+  line-height:1.05!important;
+  text-shadow:0 8px 28px rgba(0,0,0,.34)!important;
+}
+.premium-toolbar .arena-roulette-control.dual.inline-control{
+  justify-self:end!important;
+  width:min(100%,360px)!important;
+  max-width:360px!important;
+  grid-template-columns:minmax(0,1fr) 126px!important;
+  gap:10px!important;
+}
+
+/* No spinning ribbons, tilted strips, rotating labels or moving name panels. */
+.toolbar-reel,
+.toolbar-reel *,
+.arena-player-card,
+.arena-player-card::before,
+.arena-player-card::after,
+.picked-crown,
+.roulette-flash{
+  transform:none!important;
+}
+.toolbar-reel-track{display:none!important}
+.toolbar-reel.is-spinning{animation:rouletteSoftGlow .8s ease-in-out infinite alternate!important}
+.toolbar-reel-result{
+  animation:rouletteNameFade .16s ease-out!important;
+}
+@keyframes rouletteNameFade{
+  from{opacity:.45}
+  to{opacity:1}
+}
+.arena-player-card::after{animation:none!important;opacity:.08!important}
+.arena-player-card.picked,
+.arena-player-card.roulette-flash{animation:none!important}
+
+/* Premium rounded team board. Team identity is an accent, not a full color block. */
+.season-team-grid{gap:12px!important;padding:14px!important}
+.season-team-card{
+  min-height:108px!important;
+  padding:14px 15px!important;
+  border-radius:18px!important;
+  background:
+    linear-gradient(90deg,color-mix(in srgb,var(--team-accent) 9%,transparent),transparent 48%),
+    linear-gradient(180deg,#121e30,#0d1726)!important;
+  border:1px solid rgba(122,157,200,.16)!important;
+  border-left:3px solid var(--team-accent)!important;
+}
+.season-team-card>header,
+.season-team-card.palette-0>header,
+.season-team-card.palette-1>header,
+.season-team-card.palette-2>header,
+.season-team-card.palette-3>header,
+.season-team-card.palette-4>header,
+.season-team-card.palette-5>header,
+.season-team-card.palette-6>header,
+.season-team-card.palette-7>header{
+  min-height:42px!important;
+  padding:0 0 10px!important;
+  background:transparent!important;
+  border-bottom:1px solid color-mix(in srgb,var(--team-accent) 18%,transparent)!important;
+}
+.season-team-card header small{color:#7389a4!important;font-size:8px!important;letter-spacing:.08em!important}
+.season-team-card header b{max-width:none!important;font-size:14px!important;color:#f4f7fb!important}
+.season-team-card header strong{font-size:14px!important;color:#f1cb80!important}
+.season-team-roster{gap:6px!important;margin-top:10px!important}
+.season-team-roster span{
+  padding:5px 7px!important;
+  border-radius:9px!important;
+  font-size:9px!important;
+  background:rgba(255,255,255,.035)!important;
+}
+.season-team-roster small{font-size:9px!important;color:#8596aa!important}
+
+/* More readable fixed panels and controls. */
+.season-pool-panel,.season-center-stage,.season-team-panel{
+  border-radius:20px!important;
+  border-color:rgba(106,145,193,.18)!important;
+  background:linear-gradient(180deg,#101a2a,#0b1422)!important;
+}
+.season-panel-head{
+  background:linear-gradient(180deg,#141f31,#101827)!important;
+  border-bottom-color:rgba(111,149,195,.15)!important;
+}
+.season-current-player{
+  border-radius:20px!important;
+  background:
+    radial-gradient(circle at 50% 0%,rgba(79,147,222,.12),transparent 60%),
+    linear-gradient(180deg,#132238,#0d1828)!important;
+}
+.season-current-player h2{font-size:42px!important;letter-spacing:-1.3px!important}
+.season-reel,.season-price-box,.season-mini-log{border-radius:16px!important}
+
+/* Saved roster / permanent-player areas: readable hierarchy and no pale disabled buttons. */
+.library-hero{border-radius:22px!important;border:1px solid rgba(114,155,205,.16)!important;background:linear-gradient(145deg,#121f31,#0e1726)!important}
+.library-toolbar,.slot-toolbar{border-radius:18px!important;background:linear-gradient(180deg,#111d2e,#0d1725)!important}
+.library-toolbar input,.slot-toolbar input,.slot-toolbar select{font-size:13px!important}
+.library-toolbar button,.slot-toolbar button{white-space:nowrap!important}
+.slot-help-row span{color:#a8b8ca!important}
+
+button:disabled,
+button[disabled]{
+  color:#93a6bd!important;
+  background:#172434!important;
+  border:1px solid rgba(132,157,188,.16)!important;
+  opacity:1!important;
+}
+
+@media(max-width:1180px){
+  .command-deck .arena-toolbar.premium-toolbar{
+    grid-template-columns:1fr!important;
+    min-height:auto!important;
+    padding:18px!important;
+  }
+  .arena-toolbar-spacer{display:none!important}
+  .premium-toolbar .arena-title{order:1}
+  .premium-toolbar .arena-roulette-control.dual.inline-control{order:2;justify-self:center!important;width:min(100%,560px)!important;max-width:560px!important}
+}
+
+.card-status-pill{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:8px!important;
+  width:100%!important;
+  max-width:100%!important;
+  padding:8px 10px!important;
+  border-radius:12px!important;
+  transform:none!important;
+  position:static!important;
+  text-align:left!important;
+  box-shadow:none!important;
+}
+.card-status-pill strong{font-size:10px!important;letter-spacing:.02em!important}
+.card-status-pill span{font-size:9px!important;color:#afbdd0!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+.card-status-pill.sold{background:rgba(47,151,101,.10)!important;border:1px solid rgba(79,205,139,.22)!important;color:#9af0bd!important}
+.card-status-pill.unsold{background:rgba(176,58,78,.11)!important;border:1px solid rgba(255,105,125,.22)!important;color:#ff9aaa!important}

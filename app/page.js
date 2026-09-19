@@ -518,17 +518,15 @@ function Auction({
 
   const PlayerCard=({player})=>{
     const active=(player.id===(spinning?roulettePreviewId:currentPlayerId))&&['waiting','unsold'].includes(player.status);
-    const sold=player.status==='sold';
-    const unsold=player.status==='unsold';
-    const team=teams.find(t=>t.id===player.soldTeamId);
     const roleText=`${player.main}${player.sub&&player.sub!=='없음'?` / ${player.sub}`:''}`;
+    const team=teams.find(t=>t.id===player.soldTeamId);
 
     return <button
       className={[
         'arena-player-card',
         active?'picked':'',
-        sold?'completed':'',
-        unsold?'unsold':'',
+        player.status==='sold'?'completed':'',
+        player.status==='unsold'?'unsold':'',
         spinning&&active?'roulette-flash':''
       ].join(' ')}
       onClick={()=>['waiting','unsold'].includes(player.status)&&choosePlayer(player,true)}
@@ -540,15 +538,8 @@ function Auction({
       </div>
 
       <div className="premium-card-status-zone">
-        {sold&&<div className="card-stamp sold-stamp">
-          <strong>선택 완료</strong>
-          <span>{team?.name} · {Number(player.soldPrice||0).toLocaleString()}P</span>
-        </div>}
-
-        {unsold&&<div className="card-stamp unsold-stamp">
-          <strong>유찰</strong>
-        </div>}
-
+        {player.status==='sold'&&<div className="card-status-pill sold"><strong>낙찰 완료</strong><span>{team?.name||'팀'} · {Number(player.soldPrice||0).toLocaleString()}P</span></div>}
+        {player.status==='unsold'&&<div className="card-status-pill unsold"><strong>유찰</strong><span>재추첨 가능</span></div>}
         {active&&player.status==='waiting'&&<div className="picked-crown">NEXT PICK</div>}
       </div>
     </button>;
@@ -649,19 +640,16 @@ function Auction({
     </div>}
 
     <div className="draft-arena-shell command-deck">
-      <div className="command-overview"><div><span>GOCHUBAT / AUCTION CONTROL · {seasonMode?'SEASON':'REGULAR'}</span><h2>{seasonMode?'정기내전 경매 운영실':'일반내전 경매 운영실'}</h2><p>{seasonMode?'대규모 명단을 한 화면에서 관리하는 압축형 경매 화면입니다.':'선수 카드 중심의 방송형 경매 화면입니다.'}</p></div><div className="command-metrics"><div><small>대기 선수</small><strong>{waiting.length}</strong></div><div><small>낙찰 완료</small><strong>{auctionPlayers.filter(p=>p.status==='sold').length}</strong></div><div><small>참가 팀</small><strong>{teams.length}</strong></div></div></div>
-      <header className="arena-toolbar">
-        <div className="arena-back toolbar-links"><span>{seasonMode?'SEASON DRAFT':'LIVE DRAFT'}</span><small>{seasonMode?'40명 이상도 압축 목록으로 빠르게 운영':'선수를 추첨하고 팀을 선택하세요'}</small></div>
+      <header className="arena-toolbar premium-toolbar">
+        <div className="arena-toolbar-spacer" aria-hidden="true" />
         <div className="arena-title">
           <small>고추밭 내전 경매 시스템</small>
           <h2><TournamentTitle title={settings.title}/></h2>
         </div>
         <div className="arena-roulette-control dual inline-control">
           <div className={`toolbar-reel ${spinning?'is-spinning':'is-idle'}`}>
-            {spinning&&<div className="toolbar-reel-track" style={{transform:`translateY(${-rouletteStep*38}px)`}}>
-              {rouletteItems.concat(rouletteItems).map((p,i)=><div key={`${p.id}-${i}`}>{p.name}</div>)}
-            </div>}
-            {!spinning&&<strong className="toolbar-reel-result">{rouletteName}</strong>}
+            <span className="toolbar-reel-kicker">{spinning?'NOW DRAWING':'NEXT PLAYER'}</span>
+            <strong className="toolbar-reel-result">{rouletteName}</strong>
           </div>
           <div>
             <button onClick={()=>spinRoulette('normal')} disabled={spinning||!normalPool.length}>{spinning&&rouletteMode==='normal'?'추첨 중':'일반 룰렛'}</button>
@@ -891,7 +879,7 @@ function Players({players,setPlayers,savePlayerSlot,loadPlayerSlot,playerSlots,o
   };
 
   const addPermanent=async()=>{
-    if(!libraryLoaded)return alert('먼저 영구 선수 DB를 불러와 주세요.');
+    if(!libraryLoaded)return alert('먼저 선수 보관함을 열어 주세요.');
     if(!libraryForm.name.trim())return alert('선수 이름을 입력해 주세요.');
     const player=normalizeLibraryPlayer({...libraryForm,libraryId:crypto.randomUUID()});
     const duplicate=libraryPlayers.find(p=>playerIdentity(p)===playerIdentity(player));
@@ -907,7 +895,7 @@ function Players({players,setPlayers,savePlayerSlot,loadPlayerSlot,playerSlots,o
   };
 
   const importPermanentBulk=async()=>{
-    if(!libraryLoaded)return alert('먼저 영구 선수 DB를 불러와 주세요.');
+    if(!libraryLoaded)return alert('먼저 선수 보관함을 열어 주세요.');
     const {entries,errors}=parsePlayerLines(libraryBulk);
     if(errors.length){alert(errors.join('\n'));return;}
     if(!entries.length)return;
@@ -918,12 +906,12 @@ function Players({players,setPlayers,savePlayerSlot,loadPlayerSlot,playerSlots,o
       if(index>=0)next[index]={...next[index],...normalized,libraryId:next[index].libraryId};
       else next.push(normalized);
     }
-    const ok=await onPersistLibrary(next,`${entries.length}명의 정보를 영구 선수 DB에 등록·업데이트했습니다.`);
+    const ok=await onPersistLibrary(next,`${entries.length}명의 정보를 선수 보관함에 등록·업데이트했습니다.`);
     if(ok)setLibraryBulk('');
   };
 
   const mergeCurrentRoomIntoLibrary=async()=>{
-    if(!libraryLoaded)return alert('먼저 영구 선수 DB를 불러와 주세요.');
+    if(!libraryLoaded)return alert('먼저 선수 보관함을 열어 주세요.');
     const next=[...libraryPlayers];
     for(const roomPlayer of players){
       const normalized=normalizeLibraryPlayer({
@@ -937,7 +925,7 @@ function Players({players,setPlayers,savePlayerSlot,loadPlayerSlot,playerSlots,o
       if(index>=0)next[index]={...next[index],...normalized,libraryId:next[index].libraryId};
       else next.push(normalized);
     }
-    await onPersistLibrary(next,`현재 방 선수 ${players.length}명의 정보를 영구 선수 DB에 합쳤습니다.`);
+    await onPersistLibrary(next,`현재 방 선수 ${players.length}명의 정보를 선수 보관함에 합쳤습니다.`);
   };
 
   const addSelectedLibraryToRoom=()=>{
@@ -969,14 +957,14 @@ function Players({players,setPlayers,savePlayerSlot,loadPlayerSlot,playerSlots,o
   };
 
   const deleteLibraryPlayer=async(player)=>{
-    if(!confirm(`${player.name} 선수를 영구 선수 DB에서 삭제할까요?\n현재 작업방에 이미 추가된 선수는 그대로 유지됩니다.`))return;
+    if(!confirm(`${player.name} 선수를 선수 보관함에서 삭제할까요?\n현재 작업방에 이미 추가된 선수는 그대로 유지됩니다.`))return;
     const next=libraryPlayers.filter(p=>p.libraryId!==player.libraryId);
-    const ok=await onPersistLibrary(next,`${player.name} 선수를 영구 선수 DB에서 삭제했습니다.`);
+    const ok=await onPersistLibrary(next,`${player.name} 선수를 선수 보관함에서 삭제했습니다.`);
     if(ok)setLibrarySelection(prev=>{const n=new Set(prev);n.delete(player.libraryId);return n});
   };
 
   const saveRoomPlayerToLibrary=async(player)=>{
-    if(!libraryLoaded)return alert('먼저 영구 선수 DB를 불러와 주세요.');
+    if(!libraryLoaded)return alert('먼저 선수 보관함을 열어 주세요.');
     const normalized=normalizeLibraryPlayer({...player,libraryId:player.libraryId||crypto.randomUUID()});
     const index=libraryPlayers.findIndex(p=>
       (player.libraryId&&p.libraryId===player.libraryId)||
@@ -986,7 +974,7 @@ function Players({players,setPlayers,savePlayerSlot,loadPlayerSlot,playerSlots,o
     let finalId=normalized.libraryId;
     if(index>=0){finalId=next[index].libraryId;next[index]={...next[index],...normalized,libraryId:finalId};}
     else next.push(normalized);
-    const ok=await onPersistLibrary(next,index>=0?`${player.name} 선수의 영구 정보를 업데이트했습니다.`:`${player.name} 선수를 영구 선수 DB에 등록했습니다.`);
+    const ok=await onPersistLibrary(next,index>=0?`${player.name} 선수의 영구 정보를 업데이트했습니다.`:`${player.name} 선수를 선수 보관함에 등록했습니다.`);
     if(ok)setPlayers(ps=>ps.map(x=>x.id===player.id?{...x,libraryId:finalId}:x));
   };
 
@@ -1017,21 +1005,25 @@ function Players({players,setPlayers,savePlayerSlot,loadPlayerSlot,playerSlots,o
     <div className="panel-title"><div><span>PLAYER DATABASE</span><h2>선수 관리</h2></div><b>현재 방 {players.length}명</b></div>
 
     <div className="library-hero">
-      <div><span>PERMANENT PLAYER DB</span><h3>선수는 한 번만 등록하고, 경매마다 골라서 추가하세요.</h3><p>영구 선수 DB는 작업방과 별개로 저장됩니다. 작업방을 삭제하거나 새 방을 만들어도 선수 정보는 유지됩니다.</p></div>
+      <div><span>PERMANENT PLAYER VAULT</span><h3>선수는 한 번만 등록하고, 경매마다 골라서 추가하세요.</h3><p>선수 보관함은 작업방과 별개로 저장됩니다. 작업방을 삭제하거나 새 방을 만들어도 선수 정보는 그대로 유지됩니다.</p></div>
       <div className="library-stats"><strong>{libraryLoaded?libraryPlayers.length:'—'}</strong><small>{libraryLoaded?'영구 등록 선수':'DB 미연결'}</small></div>
     </div>
 
     <div className="library-toolbar">
-      <input type="password" value={libraryKey} onChange={e=>onLibraryKeyChange(e.target.value)} placeholder="영구 선수 DB 비밀번호 (8자 이상)" autoComplete="off"/>
-      <button disabled={libraryBusy||libraryKey.length<8} onClick={onLoadLibrary}>{libraryLoaded?'다시 불러오기':'영구 DB 불러오기'}</button>
-      {libraryLoaded&&<button onClick={mergeCurrentRoomIntoLibrary} disabled={libraryBusy}>현재 방 선수 DB에 합치기</button>}
-      <small>{libraryMessage||'이 비밀번호로 하나의 영구 선수 DB가 만들어집니다. 같은 비밀번호면 다른 방·PC에서도 같은 선수 목록을 불러옵니다.'}</small>
+      <input type="password" value={libraryKey} onChange={e=>onLibraryKeyChange(e.target.value)} placeholder="선수 보관함 연결키 · 처음이면 원하는 8자 이상" autoComplete="off"/>
+      <button disabled={libraryBusy||libraryKey.length<8} onClick={onLoadLibrary}>{libraryLoaded?'다시 불러오기':'선수 보관함 연결'}</button>
+      {libraryLoaded&&<button onClick={mergeCurrentRoomIntoLibrary} disabled={libraryBusy}>현재 방 선수 보관함에 추가</button>}
+      <small>{libraryMessage||'선수 보관함은 작업방과 별개로 Supabase에 저장됩니다. 처음이면 원하는 8자 이상 키를 정해서 열면 되고, 다음에도 같은 키를 쓰면 새 방·다른 PC에서 같은 선수 목록을 불러올 수 있습니다.'}</small>
+    </div>
+    <div className="library-explain-grid">
+      <div><b>선수 보관함</b><span>한 번 등록한 선수를 Supabase에 계속 보관합니다. 새 작업방을 만들어도 그대로 다시 불러올 수 있습니다.</span></div>
+      <div><b>연결키는 직접 정합니다</b><span>처음 사용할 때 원하는 8자 이상을 입력하면 그 키로 보관함이 만들어집니다. 이후 같은 키를 입력하면 같은 선수 보관함이 열립니다.</span></div>
     </div>
 
     {libraryLoaded&&<>
       <section className="permanent-db-shell">
         <header className="permanent-db-head">
-          <div><span>MASTER ROSTER</span><h3>영구 선수 목록</h3><p>체크한 선수만 현재 작업방에 복사됩니다. 영구 목록 자체는 없어지지 않습니다.</p></div>
+          <div><span>MASTER ROSTER</span><h3>선수 보관함</h3><p>체크한 선수만 현재 작업방에 복사됩니다. 영구 목록 자체는 없어지지 않습니다.</p></div>
           <div className="permanent-db-actions"><strong>{librarySelection.size}명 선택</strong><button className="primary-btn" onClick={addSelectedLibraryToRoom}>선택 선수 현재 방에 추가</button></div>
         </header>
 
@@ -1047,7 +1039,7 @@ function Players({players,setPlayers,savePlayerSlot,loadPlayerSlot,playerSlots,o
         <div className="bulk-entry permanent-bulk">
           <div><span>QUICK IMPORT</span><h3>여러 명 한 번에 영구 등록</h3><small>예: 유노/퀸카조미연#KR1/M991/AD · 정우/김정우#1007/D1/JG TOP</small></div>
           <textarea value={libraryBulk} onChange={e=>setLibraryBulk(e.target.value)} placeholder={'유노/퀸카조미연#KR1/M991/AD\n정우/김정우#1007/D1/JG TOP'} rows={4}/>
-          <button disabled={libraryBusy} onClick={importPermanentBulk}>영구 DB 등록 / 기존 선수 업데이트</button>
+          <button disabled={libraryBusy} onClick={importPermanentBulk}>보관함 등록 / 기존 선수 업데이트</button>
         </div>
 
         <div className="permanent-db-toolbar">
@@ -1074,16 +1066,20 @@ function Players({players,setPlayers,savePlayerSlot,loadPlayerSlot,playerSlots,o
     </>}
 
     <div className="current-room-divider">
-      <div><span>CURRENT ROOM</span><h3>현재 작업방 선수</h3><p>여기 있는 선수 중 체크한 사람만 이번 경매에 참가합니다.</p></div>
+      <div><span>CURRENT ROOM</span><h3>현재 작업방 선수</h3><p>여기 있는 선수 중 체크한 사람만 이번 경매에 참가합니다. 저장 명단은 새 작업방에서도 다시 불러올 수 있습니다.</p></div>
       <strong>{selectedCount} / {players.length}명 참가 선택</strong>
     </div>
 
     <div className="slot-toolbar">
       <input value={slotName} onChange={e=>setSlotName(e.target.value)} placeholder="명단 슬롯 이름"/>
-      <button onClick={()=>savePlayerSlot(slotName)}>현재 방 명단 저장</button>
-      <select onChange={e=>e.target.value&&loadPlayerSlot(e.target.value)} defaultValue=""><option value="">저장 명단 불러오기</option>{playerSlots.map(x=><option key={x.name} value={x.name}>{x.name} · {x.players.length}명</option>)}</select>
+      <button onClick={()=>savePlayerSlot(slotName)}>공용 저장 명단에 저장</button>
+      <select onChange={e=>e.target.value&&loadPlayerSlot(e.target.value)} defaultValue=""><option value="">공용 저장 명단 불러오기</option>{playerSlots.map(x=><option key={x.name} value={x.name}>{x.name} · {x.players.length}명</option>)}</select>
       <button onClick={exportPlayers}>JSON 내보내기</button><button onClick={()=>importRef.current?.click()}>JSON 불러오기</button>
       <input ref={importRef} type="file" accept="application/json,.json" hidden onChange={e=>e.target.files?.[0]&&importPlayers(e.target.files[0])}/>
+    </div>
+    <div className="slot-help-row">
+      <span>저장 명단은 <b>이 PC의 모든 새 작업방</b>에서 그대로 다시 불러올 수 있습니다.</span>
+      <span>다른 PC에서도 같은 선수들을 쓰려면 위의 <b>선수 보관함</b>을 같은 연결키로 열면 됩니다.</span>
     </div>
 
     <div className="player-form current-room-add">
@@ -1122,7 +1118,7 @@ function Players({players,setPlayers,savePlayerSlot,loadPlayerSlot,playerSlots,o
         <div className="row-actions">
           {p.status!=='waiting'&&<button onClick={()=>onRecoverPlayer?.(p)}>복구</button>}
           <button onClick={()=>setEditId(p.id)}>수정</button>
-          <button onClick={()=>{if(confirm(`${p.name} 선수를 현재 방에서 삭제할까요?\n영구 선수 DB에는 영향을 주지 않습니다.`))setPlayers(ps=>ps.filter(x=>x.id!==p.id))}}>방에서 삭제</button>
+          <button onClick={()=>{if(confirm(`${p.name} 선수를 현재 방에서 삭제할까요?\n선수 보관함에는 영향을 주지 않습니다.`))setPlayers(ps=>ps.filter(x=>x.id!==p.id))}}>방에서 삭제</button>
         </div>
       </div>)}
       {!visible.length&&<div className="selection-empty">조건에 맞는 선수가 없습니다.</div>}
@@ -1139,7 +1135,7 @@ function Players({players,setPlayers,savePlayerSlot,loadPlayerSlot,playerSlots,o
           <label>주라인<select value={libraryEditDraft.main} onChange={e=>setLibraryEditDraft({...libraryEditDraft,main:e.target.value})}>{ROLES.map(r=><option key={r}>{r}</option>)}</select></label>
           <label>부라인<select value={libraryEditDraft.sub||'없음'} onChange={e=>setLibraryEditDraft({...libraryEditDraft,sub:e.target.value})}><option>없음</option>{ROLES.map(r=><option key={r}>{r}</option>)}</select></label>
         </div>
-        <button className="primary-btn" disabled={libraryBusy} onClick={saveLibraryEdit}>영구 정보 저장</button>
+        <button className="primary-btn" disabled={libraryBusy} onClick={saveLibraryEdit}>선수 보관함에 저장</button>
       </section>
     </div>}
 
@@ -1149,8 +1145,8 @@ function Players({players,setPlayers,savePlayerSlot,loadPlayerSlot,playerSlots,o
       <label>롤 닉네임#태그<input value={p.riotId||''} onChange={e=>setPlayers(ps=>ps.map(x=>x.id===p.id?{...x,riotId:e.target.value}:x))}/></label>
       <label>티어<select value={p.tier} onChange={e=>setPlayers(ps=>ps.map(x=>x.id===p.id?{...x,tier:e.target.value}:x))}>{TIERS.map(t=><option key={t}>{t}</option>)}</select></label>
       <div className="edit-roles"><label>주라인<select value={p.main} onChange={e=>setPlayers(ps=>ps.map(x=>x.id===p.id?{...x,main:e.target.value}:x))}>{ROLES.map(r=><option key={r}>{r}</option>)}</select></label><label>부라인<select value={p.sub||'없음'} onChange={e=>setPlayers(ps=>ps.map(x=>x.id===p.id?{...x,sub:e.target.value}:x))}><option>없음</option>{ROLES.map(r=><option key={r}>{r}</option>)}</select></label></div>
-      <div className="edit-save-row"><button onClick={()=>setEditId(null)}>현재 방만 저장</button><button className="primary-btn" disabled={!libraryLoaded||libraryBusy} onClick={()=>saveRoomPlayerToLibrary(p)}>{p.libraryId?'영구 DB에도 반영':'영구 DB에 등록'}</button></div>
-      {!libraryLoaded&&<small>영구 DB에 반영하려면 위에서 먼저 영구 선수 DB를 불러와 주세요.</small>}
+      <div className="edit-save-row"><button onClick={()=>setEditId(null)}>현재 방만 저장</button><button className="primary-btn" disabled={!libraryLoaded||libraryBusy} onClick={()=>saveRoomPlayerToLibrary(p)}>{p.libraryId?'선수 보관함에도 반영':'선수 보관함에 등록'}</button></div>
+      {!libraryLoaded&&<small>선수 보관함에도 저장하려면 위에서 먼저 보관함을 연결해 주세요.</small>}
     </section></div>})()}
   </section>;
 }
@@ -1179,8 +1175,8 @@ function FullPlayerList({players,teams,setActive,setCurrentPlayerId}){
             <strong className="premium-name">{p.name}</strong>
           </div>
           <div className="premium-card-status-zone">
-            {p.status==='sold'&&<div className="card-stamp sold-stamp"><strong>선택 완료</strong><span>{team?.name} · {Number(p.soldPrice||0).toLocaleString()}P</span></div>}
-            {p.status==='unsold'&&<div className="card-stamp unsold-stamp"><strong>유찰</strong></div>}
+            {p.status==='sold'&&<div className="card-status-pill sold"><strong>낙찰 완료</strong><span>{team?.name||'팀'} · {Number(p.soldPrice||0).toLocaleString()}P</span></div>}
+            {p.status==='unsold'&&<div className="card-status-pill unsold"><strong>유찰</strong><span>재추첨 가능</span></div>}
           </div>
         </button>
       })}
@@ -1643,7 +1639,8 @@ export default function Home(){
       else if(roomFromUrl){setRequestedRoomCode(roomFromUrl);setRoomDialog(true);}
       else setRoomLobby(true);
     }catch{}
-    try{const raw=localStorage.getItem(KEY);if(raw){const x=JSON.parse(raw);const st={...DEFAULT_SETTINGS,...x.settings};setSettings(st);setPlayers((x.players||DEFAULT_PLAYERS).map(p=>({...p,tier:normalizeTier(p.tier),inAuction:p.inAuction!==false})));setTeams(makeTeams(st,x.teams||[]));setRecent(x.recent||[]);setAuctionLog(x.auctionLog||[]);setCurrentPlayerId(x.currentPlayerId??null);setUnsoldList(x.unsoldList||[]);setUndoStack(x.undoStack||JSON.parse(localStorage.getItem(UNDO_KEY)||'[]'));setLivePrice(x.livePrice||0);setLiveTeamName(x.liveTeamName||'');setSpectatorEvent(x.spectatorEvent||null);const ps=localStorage.getItem(PLAYER_SLOT_KEY);if(ps)setPlayerSlots(JSON.parse(ps));}}catch{}
+    try{const raw=localStorage.getItem(KEY);if(raw){const x=JSON.parse(raw);const st={...DEFAULT_SETTINGS,...x.settings};setSettings(st);setPlayers((x.players||DEFAULT_PLAYERS).map(p=>({...p,tier:normalizeTier(p.tier),inAuction:p.inAuction!==false})));setTeams(makeTeams(st,x.teams||[]));setRecent(x.recent||[]);setAuctionLog(x.auctionLog||[]);setCurrentPlayerId(x.currentPlayerId??null);setUnsoldList(x.unsoldList||[]);setUndoStack(x.undoStack||JSON.parse(localStorage.getItem(UNDO_KEY)||'[]'));setLivePrice(x.livePrice||0);setLiveTeamName(x.liveTeamName||'');setSpectatorEvent(x.spectatorEvent||null);}}catch{}
+    try{const ps=localStorage.getItem(PLAYER_SLOT_KEY);if(ps)setPlayerSlots(JSON.parse(ps));}catch{}
     setReady(true)
   },[]);
   const localModeState=()=>({settings,players,teams,recent,auctionLog,currentPlayerId,unsoldList,undoStack,livePrice,liveTeamName,spectatorEvent});
@@ -1683,12 +1680,12 @@ export default function Home(){
     setLibraryKey(value);
     setLibraryLoaded(false);
     setLibraryPlayers([]);
-    setLibraryMessage(value.length>=8?'DB 불러오기를 눌러 연결해 주세요.':'영구 선수 DB 비밀번호는 8자 이상입니다.');
+    setLibraryMessage(value.length>=8?'선수 보관함 연결을 눌러 주세요.':'선수 보관함 연결키는 8자 이상입니다.');
   };
   const loadLibrary=async()=>{
     if(!supabase)return setLibraryMessage('Supabase 연결을 확인해 주세요.');
-    if(libraryKey.length<8)return setLibraryMessage('영구 선수 DB 비밀번호는 8자 이상이어야 합니다.');
-    setLibraryBusy(true);setLibraryMessage('영구 선수 DB 불러오는 중...');
+    if(libraryKey.length<8)return setLibraryMessage('선수 보관함 키는 8자 이상이어야 합니다.');
+    setLibraryBusy(true);setLibraryMessage('선수 보관함 불러오는 중...');
     const {data,error}=await supabase.rpc('read_auction_player_library',{p_key:libraryKey});
     setLibraryBusy(false);
     if(error){
@@ -1698,13 +1695,13 @@ export default function Home(){
     const normalized=(Array.isArray(data)?data:[]).map(normalizeLibraryPlayer).filter(p=>p.name);
     setLibraryPlayers(normalized);
     setLibraryLoaded(true);
-    setLibraryMessage(`${normalized.length}명의 영구 선수 DB를 불러왔습니다.`);
+    setLibraryMessage(`${normalized.length}명의 선수를 보관함에서 불러왔습니다.`);
   };
-  const persistLibrary=async(nextPlayers,successMessage='영구 선수 DB 저장 완료')=>{
+  const persistLibrary=async(nextPlayers,successMessage='선수 보관함 저장 완료')=>{
     if(!supabase){setLibraryMessage('Supabase 연결을 확인해 주세요.');return false;}
-    if(!libraryLoaded){setLibraryMessage('먼저 영구 선수 DB를 불러와 주세요.');return false;}
+    if(!libraryLoaded){setLibraryMessage('먼저 선수 보관함을 열어 주세요.');return false;}
     const clean=nextPlayers.map(normalizeLibraryPlayer).filter(p=>p.name).map(({libraryId,name,riotId,tier,main,sub,imageUrl})=>({libraryId,name,riotId,tier,main,sub,imageUrl}));
-    setLibraryBusy(true);setLibraryMessage('영구 선수 DB 저장 중...');
+    setLibraryBusy(true);setLibraryMessage('선수 보관함 저장 중...');
     const {error}=await supabase.rpc('write_auction_player_library',{p_key:libraryKey,p_players:clean});
     setLibraryBusy(false);
     if(error){setLibraryMessage(`저장 실패: ${error.message} · player-library.sql 적용 여부를 확인해 주세요.`);return false;}
