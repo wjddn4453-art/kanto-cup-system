@@ -693,11 +693,10 @@ function Auction({
             <p>{current?`${current.main}${current.sub&&current.sub!=='없음'?` / ${current.sub}`:''}`:'룰렛 또는 선수 목록에서 선수를 선택하세요.'}</p>
           </div>
 
-          <div className="season-roulette-box">
-            <div className={`season-reel ${spinning?'spinning':''}`}><strong>{rouletteName}</strong><small>{spinning?'추첨 진행 중':'다음 선수 추첨'}</small></div>
+          <div className="season-roulette-box season-roulette-buttons-only">
             <div className="season-roulette-actions">
               <button className="primary-btn" onClick={()=>spinRoulette('normal')} disabled={spinning||!normalPool.length}>{spinning&&rouletteMode==='normal'?'추첨 중':'일반 룰렛'}</button>
-              <button onClick={()=>spinRoulette('unsold')} disabled={spinning||!unsoldPool.length}>유찰 룰렛 {unsoldPool.length}</button>
+              <button onClick={()=>spinRoulette('unsold')} disabled={spinning||!unsoldPool.length}>{spinning&&rouletteMode==='unsold'?'추첨 중':`유찰 룰렛 ${unsoldPool.length}`}</button>
             </div>
           </div>
 

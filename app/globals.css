@@ -4239,3 +4239,25 @@ button[disabled]{
 .card-status-pill span{font-size:9px!important;color:#afbdd0!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
 .card-status-pill.sold{background:rgba(47,151,101,.10)!important;border:1px solid rgba(79,205,139,.22)!important;color:#9af0bd!important}
 .card-status-pill.unsold{background:rgba(176,58,78,.11)!important;border:1px solid rgba(255,105,125,.22)!important;color:#ff9aaa!important}
+
+
+/* v4.3.2 — remove duplicate/rotating season roulette strip completely */
+.season-roulette-buttons-only{
+  display:block!important;
+  grid-template-columns:none!important;
+}
+.season-roulette-buttons-only .season-roulette-actions{
+  width:100%!important;
+  display:grid!important;
+  grid-template-columns:1fr 1fr!important;
+  gap:10px!important;
+}
+.season-roulette-buttons-only .season-roulette-actions button{
+  min-height:44px!important;
+  border-radius:12px!important;
+}
+/* Guard against the legacy global .spinning animation ever rotating a season control. */
+.season-center-stage .spinning{
+  animation:none!important;
+  transform:none!important;
+}
