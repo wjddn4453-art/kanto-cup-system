@@ -3538,3 +3538,33 @@ body::after{
   transform:translateY(-1px);
 }
 .room-lobby-tools .room-refresh-btn:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+
+/* v4.1 roster studio */
+:root { --bg:#080c16; --panel:#111625; --panel-2:#171e30; --line:#635747; --line-soft:rgba(219,175,99,.18); --blue:#d9a95b; --blue-dark:#72552c; --gold:#f5cc80; --muted:#aab0c0; }
+body {background: radial-gradient(ellipse at 48% -8%,rgba(197,139,65,.16),transparent 45%),radial-gradient(ellipse at 100% 80%,rgba(69,74,122,.13),transparent 48%),#080c16;}
+.single-topbar {background:linear-gradient(110deg,#0d1320,#191b2a 62%,#151426);border-bottom:1px solid rgba(234,191,113,.25)}
+.single-ball {box-shadow:0 0 30px rgba(238,181,87,.27)}
+.single-nav button.active {color:#ffdf9c;border-color:#d5a761}
+.panel.full-panel {background:linear-gradient(145deg,#131a2a,#0d1422);border:1px solid rgba(234,191,113,.2);box-shadow:0 25px 75px rgba(0,0,0,.23)}
+.library-hero {display:flex;justify-content:space-between;align-items:center;gap:20px;padding:28px 32px;margin:18px 0 14px;background:radial-gradient(circle at 80% 30%,rgba(247,195,105,.17),transparent 36%),linear-gradient(120deg,#1a2135,#202039);border:1px solid rgba(243,191,100,.35);border-radius:18px}
+.library-hero span,.bulk-entry span {color:#efc37b;font-size:11px;font-weight:900;letter-spacing:2px}
+.library-hero h3 {margin:8px 0;font-size:24px;letter-spacing:-.5px}.library-hero p {margin:0;color:#b9bfd0;font-size:13px;line-height:1.6}
+.library-stats {min-width:125px;text-align:center}.library-stats strong {display:block;font-size:42px;color:#f2cb82}.library-stats small {color:#b9bfd0}
+.library-toolbar,.library-copy {display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:14px 0;padding:14px 18px;background:#101828;border:1px solid rgba(225,181,103,.21);border-radius:12px}
+.library-toolbar input {min-width:220px;flex:1}.library-toolbar small {width:100%;color:#c4bbad}.library-copy span {flex:1;font-weight:700}
+.bulk-entry {display:grid;gap:10px;padding:20px;margin:20px 0;background:#131b2c;border:1px solid rgba(233,183,104,.26);border-radius:14px}
+.bulk-entry h3 {margin:5px 0}.bulk-entry small {color:#9faec3}.bulk-entry textarea {width:100%;resize:vertical;background:#0b1120;color:#f3f2ee;border:1px solid rgba(234,191,113,.29);border-radius:10px;padding:14px;font:inherit;line-height:1.6}
+.bulk-entry button {justify-self:start}.player-riot-id {display:block;font-size:11px;font-weight:400;color:#acb5c7;margin-top:4px}
+.player-edit-modal {display:grid;gap:12px;max-width:460px}.player-edit-modal label {display:grid;gap:6px;font-weight:600}.player-edit-modal input,.player-edit-modal select {width:100%}.edit-roles {display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:700px){.library-hero{padding:20px;align-items:flex-start}.library-hero h3{font-size:18px}.library-stats{min-width:70px}.library-stats strong{font-size:28px}.library-toolbar input{width:100%}.edit-roles{grid-template-columns:1fr}}
+
+.command-deck {max-width:1600px;margin:0 auto 30px;background:linear-gradient(155deg,#11182a,#101321 80%)!important;border:1px solid rgba(241,195,115,.27)!important;box-shadow:0 28px 80px rgba(0,0,0,.42)}
+.command-deck::before {opacity:.24}
+.command-overview {position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:24px;padding:30px 34px 22px;border-bottom:1px solid rgba(235,189,111,.14)}
+.command-overview span {font-size:10px;color:#f4c67c;letter-spacing:2.5px;font-weight:900}
+.command-overview h2 {font-size:30px;letter-spacing:-1px;margin:7px 0 2px;color:#faf4e9}.command-overview p {margin:0;color:#aab4c8;font-size:12px}
+.command-metrics {display:flex;gap:9px}.command-metrics div {min-width:100px;padding:12px 18px;background:rgba(255,255,255,.035);border:1px solid rgba(237,194,114,.17);border-radius:10px}.command-metrics small {display:block;color:#aeb8c9;font-size:11px}.command-metrics strong {font-size:23px;color:#f1c580}
+.command-deck .arena-toolbar {border-bottom:1px solid rgba(239,189,107,.18);background:#141b2b}
+.command-deck .arena-board-layout,.command-deck .arena-focus-layout {background:#0d1422}
+.command-deck .arena-player-grid {background:linear-gradient(180deg,rgba(210,157,82,.04),transparent)}
+@media(max-width:780px){.command-overview{padding:22px;display:block}.command-metrics{margin-top:18px}.command-metrics div{flex:1;min-width:0;padding:10px}}
